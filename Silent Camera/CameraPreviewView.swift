@@ -7,7 +7,7 @@ import AVFoundation
 struct CameraPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer
     let previewView: MetalCameraPreview
-    let onCameraControl: () -> Void
+    let onCameraControl: (AVCaptureEventPhase) -> Void
 
     func makeUIView(context: Context) -> PreviewContainerView {
         PreviewContainerView(previewLayer: previewLayer, previewView: previewView, onCameraControl: onCameraControl)
@@ -18,10 +18,10 @@ struct CameraPreviewView: UIViewRepresentable {
     class PreviewContainerView: UIView {
         private let hiddenLayer: AVCaptureVideoPreviewLayer
         private let metalView: MetalCameraPreview
-        private let onCapture: () -> Void
+        private let onCapture: (AVCaptureEventPhase) -> Void
         private var captureInteraction: AVCaptureEventInteraction?
 
-        init(previewLayer: AVCaptureVideoPreviewLayer, previewView: MetalCameraPreview, onCameraControl: @escaping () -> Void) {
+        init(previewLayer: AVCaptureVideoPreviewLayer, previewView: MetalCameraPreview, onCameraControl: @escaping (AVCaptureEventPhase) -> Void) {
             self.hiddenLayer = previewLayer
             self.metalView = previewView
             self.onCapture = onCameraControl
@@ -38,7 +38,7 @@ struct CameraPreviewView: UIViewRepresentable {
             layer.addSublayer(hiddenLayer)
             hiddenLayer.opacity = 0
             let interaction = AVCaptureEventInteraction { [weak self] event in
-                if event.phase == .ended { self?.onCapture() }
+                self?.onCapture(event.phase)
             }
             addInteraction(interaction)
             captureInteraction = interaction

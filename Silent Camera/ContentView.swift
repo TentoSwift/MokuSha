@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import AVKit
 internal import _LocationEssentials
 
 struct ContentView: View {
@@ -25,12 +26,12 @@ struct ContentView: View {
     @State private var longPressTask: Task<Void, Never>? = nil
     @State private var zoomInertiaTask: Task<Void, Never>?
     @State private var cameraFlipDegrees: Double = 0
+    @State private var cameraControlLongPressTask: Task<Void, Never>? = nil
+    @State private var cameraControlIsLongPress = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let slideThreshold: CGFloat = 60
-    
-    private let fbGenerator = UINotificationFeedbackGenerator()
-    
+
     private var rotAngle: Angle { .degrees(camera.uiRotationDegrees) }
     private func anim(_ a: Animation) -> Animation { reduceMotion ? .easeInOut(duration: 0.2) : a }
 
@@ -121,6 +122,19 @@ struct ContentView: View {
                 .transition(.opacity)
             }
 
+            if camera.isSilentSwitchOn {
+                HStack(spacing: 4) {
+                    Image(systemName: "bell.slash.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("マナーモード")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundStyle(.yellow)
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .glassEffect(in: .capsule)
+                .transition(.opacity)
+            }
+
             Spacer()
 
             Button {
@@ -152,7 +166,7 @@ struct ContentView: View {
                 CameraPreviewView(
                     previewLayer: camera.previewLayer,
                     previewView: camera.previewView,
-                    onCameraControl: triggerCapture
+                    onCameraControl: handleCameraControl
                 )
                 .gesture(pinchGesture)
                 .onTapGesture { location in
@@ -178,7 +192,7 @@ struct ContentView: View {
                 FocusIndicator().position(pt).allowsHitTesting(false)
             }
 
-            Color.white.opacity(showFlash ? 0.7 : 0).allowsHitTesting(false)
+            Color.black.opacity(showFlash ? 0.7 : 0).allowsHitTesting(false)
 
             if let error = camera.errorMessage {
                 VStack {
@@ -402,7 +416,7 @@ struct ContentView: View {
                                         try? await Task.sleep(for: .seconds(0.5))
                                         guard !Task.isCancelled else { return }
                                         shutterIsLongPress = true
-                                        camera.successFeedback()
+                                        camera.feedback(.recordingStart)
                                         camera.startRecording()
                                         // 縮小状態から赤く膨らみ、元のサイズへバウンス
                                         withAnimation(anim(.spring(duration: 0.45, bounce: 0.55))) {
@@ -428,7 +442,7 @@ struct ContentView: View {
                                 } else if camera.isRecording {
                                     // 録画中（未ロック）に離した：閾値以上ならロック、未満はキャンセル
                                     if dx >= slideThreshold {
-                                        camera.successFeedback()
+                                        camera.feedback(.recordingLock)
                                         isRecordingLocked = true
                                         withAnimation(anim(.spring(duration: 0.4, bounce: 0.25))) {
                                             shutterDragOffset = targetOffset
@@ -479,10 +493,10 @@ struct ContentView: View {
                         .resizable()
                         .scaledToFill()
                         .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.5), lineWidth: 1))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
                 } else {
-                    RoundedRectangle(cornerRadius: 10)
+                    Circle()
                         .stroke(.white.opacity(0.3), lineWidth: 1)
                         .frame(width: 56, height: 56)
                 }
@@ -567,8 +581,64 @@ struct ContentView: View {
         }
     }
 
+    /// カメラコントロール（iPhone 16 のハードウェアボタン）の押下フェーズを
+    /// 画面シャッターと同じ「短押し→写真／長押し→録画→離す→停止」に対応付ける
+    private func handleCameraControl(phase: AVCaptureEventPhase) {
+        switch phase {
+        case .began:
+            // すでに録画中なら長押しタイマーは動かさない（.ended で停止判定する）
+            guard !camera.isRecording else {
+                cameraControlIsLongPress = false
+                return
+            }
+            cameraControlIsLongPress = false
+            cameraControlLongPressTask?.cancel()
+            cameraControlLongPressTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(0.5))
+                guard !Task.isCancelled else { return }
+                cameraControlIsLongPress = true
+                camera.feedback(.recordingStart)
+                camera.startRecording()
+            }
+        case .ended:
+            cameraControlLongPressTask?.cancel()
+            cameraControlLongPressTask = nil
+            if camera.isRecording {
+                // 自分の長押しで録画開始 → 画面でロックされている状態で離した：そのまま続行
+                if isRecordingLocked && cameraControlIsLongPress {
+                    cameraControlIsLongPress = false
+                    return
+                }
+                // それ以外（未ロックで離した／ロック録画中に押して停止）：停止
+                if camera.recordingDuration >= 1 {
+                    camera.stopRecording()
+                } else {
+                    camera.cancelRecording()
+                }
+                if isRecordingLocked {
+                    isRecordingLocked = false
+                    withAnimation(anim(.spring(duration: 0.5, bounce: 0.15))) {
+                        shutterDragOffset = 0
+                    }
+                }
+            } else if !cameraControlIsLongPress {
+                triggerCapture()
+            }
+            cameraControlIsLongPress = false
+        case .cancelled:
+            cameraControlLongPressTask?.cancel()
+            cameraControlLongPressTask = nil
+            if camera.isRecording && cameraControlIsLongPress {
+                camera.cancelRecording()
+            }
+            cameraControlIsLongPress = false
+        @unknown default:
+            break
+        }
+    }
+
     private func triggerCapture() {
-        fbGenerator.notificationOccurred(.success)
+        camera.feedback(.photo)
         camera.capturePhoto()
         withAnimation(.easeIn(duration: 0.05)) { showFlash = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {

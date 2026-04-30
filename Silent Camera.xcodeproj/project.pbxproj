@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2D0630132FA06A4200E17F9D /* Silent Camera Capture Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 2D06300A2FA06A4200E17F9D /* Silent Camera Capture Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2D77FD802FA3408D00B9B668 /* SilentCamera.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2D77FD7F2FA3408D00B9B668 /* SilentCamera.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +38,7 @@
 /* Begin PBXFileReference section */
 		2D062E302FA040D600E17F9D /* Silent Camera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Silent Camera.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D06300A2FA06A4200E17F9D /* Silent Camera Capture Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = "Silent Camera Capture Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2D77FD7F2FA3408D00B9B668 /* SilentCamera.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = SilentCamera.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -96,6 +98,7 @@
 		2D062E272FA040D600E17F9D = {
 			isa = PBXGroup;
 			children = (
+				2D77FD7F2FA3408D00B9B668 /* SilentCamera.icon */,
 				2D062E322FA040D600E17F9D /* Silent Camera */,
 				2D06300B2FA06A4200E17F9D /* Silent Camera Capture Extension */,
 				2D062E312FA040D600E17F9D /* Products */,
@@ -203,6 +206,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2D77FD802FA3408D00B9B668 /* SilentCamera.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,8 +369,9 @@
 		2D062E3C2FA040D700E17F9D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = SilentCamera;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
@@ -401,8 +406,9 @@
 		2D062E3D2FA040D700E17F9D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = SilentCamera;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;

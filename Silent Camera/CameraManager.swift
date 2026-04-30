@@ -1,5 +1,7 @@
 import AVFoundation
 import SwiftUI
+import AudioToolbox
+import CoreHaptics
 import CoreLocation
 import CoreMotion
 import MetalKit
@@ -7,6 +9,152 @@ import Photos
 import UIKit
 import UniformTypeIdentifiers
 internal import Combine
+
+/// AVCaptureSession の .playAndRecord 環境下では UIFeedbackGenerator が抑制されるため、
+/// Core Haptics を直接使ってハプティック専用エンジンとして起動する。
+@MainActor
+final class HapticManager {
+    static let shared = HapticManager()
+
+    private var engine: CHHapticEngine?
+    private let supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
+
+    private init() {
+        prepareEngine()
+        // バックグラウンド → フォアグラウンド復帰時にもエンジン再起動 & ウォームアップ
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.handleForeground() }
+        }
+    }
+
+    private func handleForeground() {
+        guard supportsHaptics else { return }
+        if engine == nil {
+            prepareEngine()
+        } else {
+            do { try engine?.start() } catch {
+                NSLog("HapticManager: foreground restart failed: \(error)")
+                engine = nil
+                prepareEngine()
+                return
+            }
+            warmup()
+        }
+    }
+
+    private func prepareEngine() {
+        guard supportsHaptics else { return }
+        do {
+            let engine = try CHHapticEngine()
+            engine.playsHapticsOnly = true
+            engine.isAutoShutdownEnabled = false
+            engine.stoppedHandler = { [weak self] reason in
+                NSLog("HapticManager: engine stopped reason=\(reason.rawValue)")
+                Task { @MainActor [weak self] in
+                    self?.engine = nil
+                    self?.prepareEngine()
+                }
+            }
+            engine.resetHandler = { [weak self] in
+                NSLog("HapticManager: engine reset")
+                Task { @MainActor [weak self] in
+                    do { try self?.engine?.start() } catch {
+                        NSLog("HapticManager: restart failed: \(error)")
+                    }
+                }
+            }
+            try engine.start()
+            self.engine = engine
+            warmup()
+        } catch {
+            NSLog("HapticManager: prepare failed: \(error)")
+            engine = nil
+        }
+    }
+
+    /// Taptic Engine の「冷えた状態」での初回ピーク出力を抑えるためのウォームアップ。
+    /// intensity 0.001 はほぼ知覚不能だが、内部の再生パスを一度通すことで初回が設定値通りに揃う。
+    private func warmup() {
+        guard let engine else { return }
+        let i = CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.001)
+        let s = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
+        let event = CHHapticEvent(eventType: .hapticTransient, parameters: [i, s], relativeTime: 0)
+        if let pattern = try? CHHapticPattern(events: [event], parameters: []),
+           let player = try? engine.makePlayer(with: pattern) {
+            try? player.start(atTime: CHHapticTimeImmediate)
+        }
+    }
+
+    enum FeedbackType {
+        /// 写真撮影：鋭い 1 クリック（カシャッ）
+        case photo
+        /// 録画開始：低→高 に立ち上がる 2 連打
+        case recordingStart
+        /// 録画停止：重い 1 発で終止符
+        case recordingStop
+        /// 録画ロック成立：軽快な 2 連打
+        case recordingLock
+        /// ズームのプリセット通過：ごく軽いティック
+        case zoomTick
+    }
+
+    func play(_ type: FeedbackType) {
+        guard supportsHaptics else {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            return
+        }
+        let events: [CHHapticEvent]
+        switch type {
+        case .photo:
+            let i = CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.25)
+            let s = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.9)
+            events = [CHHapticEvent(eventType: .hapticTransient, parameters: [i, s], relativeTime: 0)]
+        case .recordingStart:
+            let i = CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.25)
+            let lowS  = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.3)
+            let highS = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.8)
+            events = [
+                CHHapticEvent(eventType: .hapticTransient, parameters: [i, lowS],  relativeTime: 0),
+                CHHapticEvent(eventType: .hapticTransient, parameters: [i, highS], relativeTime: 0.10),
+            ]
+        case .recordingStop:
+            let i = CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.25)
+            let s = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.2)
+            events = [CHHapticEvent(eventType: .hapticTransient, parameters: [i, s], relativeTime: 0)]
+        case .recordingLock:
+            let i = CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.18)
+            let s = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.7)
+            events = [CHHapticEvent(eventType: .hapticTransient, parameters: [i, s], relativeTime: 0)]
+        case .zoomTick:
+            // 「コツン」：低めシャープネスで重みのある単発（木やプラスチックを軽く叩く感触）
+            let i = CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.2)
+            let s = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.3)
+            events = [CHHapticEvent(eventType: .hapticTransient, parameters: [i, s], relativeTime: 0)]
+        }
+        play(events: events)
+    }
+
+    private func play(events: [CHHapticEvent]) {
+        guard let engine else {
+            NSLog("HapticManager: engine nil, fallback")
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            return
+        }
+        do {
+            let pattern = try CHHapticPattern(events: events, parameters: [])
+            let player = try engine.makePlayer(with: pattern)
+            try engine.start()
+            try player.start(atTime: CHHapticTimeImmediate)
+        } catch {
+            NSLog("HapticManager: play failed: \(error)")
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
+    }
+}
 
 enum VideoQuality: String, CaseIterable {
     case q4K   = "4K"
@@ -80,18 +228,19 @@ class CameraManager: NSObject, ObservableObject {
     @Published var recordingDuration: TimeInterval = 0
     @Published var isFrontCamera: Bool = false
     @Published var videoQuality: VideoQuality = .q4K
+    /// マナーモード ON（直近の検知結果）
+    @Published var isSilentSwitchOn: Bool = false
 
     private let videoOutput = AVCaptureVideoDataOutput()
     private let movieOutput = AVCaptureMovieFileOutput()
+    private let photoOutput = AVCapturePhotoOutput()
+    private var photoProcessor: PhotoCaptureProcessor?
     private let sessionQueue = DispatchQueue(label: "camera.session")
     private let captureQueue = DispatchQueue(label: "camera.capture")
     private let locationManager = CLLocationManager()
 
     let previewView = MetalCameraPreview()
 
-    nonisolated(unsafe) private var burstRemaining = 0
-    nonisolated(unsafe) private var burstBestCG: CGImage? = nil
-    nonisolated(unsafe) private var burstBestScore: CGFloat = -1
     nonisolated(unsafe) private var currentColorStyle: Int = 0
     nonisolated(unsafe) private var currentUIRotation: Double = 0
     nonisolated(unsafe) private var currentAspectRatio: CaptureAspectRatio = .fourThree
@@ -110,13 +259,71 @@ class CameraManager: NSObject, ObservableObject {
         .workingColorSpace: CGColorSpace(name: CGColorSpace.displayP3) as Any,
     ])
 
-    private let notificationFeedback = UINotificationFeedbackGenerator()
-
-    func successFeedback() {
-        notificationFeedback.notificationOccurred(.success)
+    func feedback(_ type: HapticManager.FeedbackType) {
+        HapticManager.shared.play(type)
     }
 
-    private var _currentZoom: CGFloat = 1.0
+    /// マナーモード状態を検知して `isSilentSwitchOn` を更新する。
+    /// `.playAndRecord` のままだと AudioServicesPlaySystemSound が silent switch を無視するため、
+    /// 一時的に `.ambient` に切り替える。検知が終わったら元の `.playAndRecord` に戻す。
+    func detectSilentSwitchState() async {
+        // 録画中／検知実行中は同時実行しない（音声セッション衝突防止）
+        guard !isRecording, !isDetectingMute else { return }
+        isDetectingMute = true
+        defer { isDetectingMute = false }
+
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.ambient, options: [.mixWithOthers])
+            try session.setActive(true)
+        } catch {
+            return
+        }
+        let isMuted: Bool = await withCheckedContinuation { continuation in
+            MuteChecker.shared.check { result in
+                continuation.resume(returning: result)
+            }
+        }
+        isSilentSwitchOn = isMuted
+        try? session.setCategory(
+            .playAndRecord,
+            mode: .videoRecording,
+            options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
+        )
+        try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+        try? session.setActive(true)
+    }
+
+    private static let zoomPresets: [CGFloat] = [1.0, 2.0, 3.0, 5.0, 10.0, 25.0]
+    private static let zoomTickMinInterval: TimeInterval = 0.15
+    private var lastZoomTickTime: TimeInterval = 0
+    private var isAnimatingZoom = false
+
+    private var _currentZoom: CGFloat = 1.0 {
+        didSet {
+            // アニメーション中は途中の発火を抑制（animateZoom 終点で 1 回だけ鳴らす）
+            guard !isAnimatingZoom else { return }
+            let w = currentWideAngleZoom
+            guard w > 0, oldValue != _currentZoom else { return }
+            let oldUser = oldValue / w
+            let newUser = _currentZoom / w
+            for preset in Self.zoomPresets {
+                if (oldUser < preset && newUser >= preset) ||
+                   (oldUser > preset && newUser <= preset) {
+                    fireZoomTickIfAllowed()
+                    return
+                }
+            }
+        }
+    }
+
+    /// 直近 150ms 以内に鳴らしていなければズームティックを再生（ピンチの指ブレで連続発火するのを防ぐ）
+    private func fireZoomTickIfAllowed() {
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastZoomTickTime > Self.zoomTickMinInterval else { return }
+        lastZoomTickTime = now
+        feedback(.zoomTick)
+    }
 
     func commitZoom() {
         zoomFactor = _currentZoom
@@ -145,6 +352,8 @@ class CameraManager: NSObject, ObservableObject {
     // MARK: - Public API
 
     func startSession() {
+        // 音声セッションを起動する前にハプティックエンジンを初期化
+        _ = HapticManager.shared
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         authorizationStatus = status
         switch status {
@@ -165,10 +374,67 @@ class CameraManager: NSObject, ObservableObject {
         startMotionDetection()
         PHPhotoLibrary.shared().register(self)
         fetchLatestPhoto()
+        registerCaptureSessionObservers()
+        // セッション安定化のため少し待ってから初回マナーモード検知（1 回のみ）
+        muteCheckTask?.cancel()
+        muteCheckTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(1500))
+            await self?.detectSilentSwitchState()
+        }
+    }
+
+    /// 音声セッションの切替や他アプリへの切替などで AVCaptureSession が中断された場合に
+    /// preview が止まることがある。各種復帰イベントで startRunning を呼んで preview を復活させる。
+    private func registerCaptureSessionObservers() {
+        let center = NotificationCenter.default
+        center.addObserver(
+            forName: .AVCaptureSessionWasInterrupted,
+            object: session,
+            queue: .main
+        ) { notification in
+            let reason = (notification.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int) ?? -1
+            print("[Session] interrupted reason=\(reason)")
+        }
+        center.addObserver(
+            forName: .AVCaptureSessionInterruptionEnded,
+            object: session,
+            queue: .main
+        ) { [weak self] _ in
+            print("[Session] interruption ended")
+            self?.restartCaptureSessionIfNeeded()
+        }
+        center.addObserver(
+            forName: .AVCaptureSessionRuntimeError,
+            object: session,
+            queue: .main
+        ) { [weak self] notification in
+            let err = notification.userInfo?[AVCaptureSessionErrorKey] as? Error
+            print("[Session] runtime error: \(err?.localizedDescription ?? "unknown")")
+            self?.restartCaptureSessionIfNeeded()
+        }
+        // バックグラウンド復帰時：他アプリ（写真など）から戻ったときに preview を確実に復帰させる
+        center.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            print("[Session] app did become active → restart capture session if needed")
+            self?.restartCaptureSessionIfNeeded()
+        }
+    }
+
+    /// セッションが停止していれば startRunning で復帰させる（sessionQueue で実行）
+    private func restartCaptureSessionIfNeeded() {
+        sessionQueue.async { [weak self] in
+            guard let self, !self.session.isRunning else { return }
+            self.session.startRunning()
+        }
     }
 
     func stopSession() {
         if isRecording { stopRecording() }
+        muteCheckTask?.cancel()
+        muteCheckTask = nil
         sessionQueue.async { [weak self] in self?.session.stopRunning() }
         motionManager.stopAccelerometerUpdates()
         PHPhotoLibrary.shared().unregisterChangeObserver(self)
@@ -198,9 +464,141 @@ class CameraManager: NSObject, ObservableObject {
     }
 
     func capturePhoto() {
-        burstBestCG = nil
-        burstBestScore = -1
-        burstRemaining = min(20, max(4, Int(zoomFactor * 3)))
+        // 撮影瞬間のデバイス向きを写真ファイルの回転メタデータに焼き込む
+        let rotationAngle = videoRotationAngle(for: currentUIRotation)
+        if let conn = photoOutput.connection(with: .video),
+           conn.isVideoRotationAngleSupported(rotationAngle) {
+            conn.videoRotationAngle = rotationAngle
+        }
+        let settings = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.hevc])
+        // photoOutput が許可している最大寸法でリクエスト（48MP など）
+        settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
+        // 画質優先：これがないと iOS は速度優先で 12MP に pixel-bin する
+        settings.photoQualityPrioritization = .quality
+        print("[Capture] photoOutput.maxPhotoDimensions=\(photoOutput.maxPhotoDimensions.width)x\(photoOutput.maxPhotoDimensions.height) settings.maxPhotoDimensions=\(settings.maxPhotoDimensions.width)x\(settings.maxPhotoDimensions.height)")
+        let processor = PhotoCaptureProcessor(manager: self)
+        photoProcessor = processor  // delegate を retain
+        photoOutput.capturePhoto(with: settings, delegate: processor)
+    }
+
+    /// AVCapturePhotoCaptureDelegate からの撮影完了コールバック。
+    /// AVFoundation が photo.metadata に書いた EXIF（レンズ・焦点距離・絞り・ISO 等）を
+    /// 全て保持したまま、色味／クロップ／ダウンスケール後の HEIC を生成する。
+    nonisolated func processCapturedPhoto(_ photo: AVCapturePhoto) {
+        // cgImageRepresentation() はメモリ節約のためダウンスケール版を返すことがある。
+        // フル解像度を得るには fileDataRepresentation() の HEIC バイト列をデコードする。
+        guard let fileData = photo.fileDataRepresentation(),
+              let source = CGImageSourceCreateWithData(fileData as CFData, nil) else { return }
+        // HEIC 内部の構造を診断
+        let count = CGImageSourceGetCount(source)
+        let primary = CGImageSourceGetPrimaryImageIndex(source)
+        print("[Capture] HEIC images count=\(count) primaryIdx=\(primary) fileData=\(fileData.count) bytes")
+        for i in 0..<count {
+            if let img = CGImageSourceCreateImageAtIndex(source, i, nil) {
+                print("[Capture]   image[\(i)]: \(img.width)x\(img.height)")
+            }
+        }
+        // primary 画像（フル解像度想定）を採用
+        guard let cgImage = CGImageSourceCreateImageAtIndex(source, primary, nil) else { return }
+        print("[Capture] received cgImage \(cgImage.width)x\(cgImage.height)")
+        let orientationRaw = (photo.metadata[kCGImagePropertyOrientation as String] as? UInt32) ?? 1
+        let cgOrientation = CGImagePropertyOrientation(rawValue: orientationRaw) ?? .up
+        var ci = CIImage(cgImage: cgImage).oriented(cgOrientation)
+        ci = applyColorStyle(ci, style: currentColorStyle)
+        let cropped = cropToAspectRatio(ci)
+        guard let processedCG = ciContext.createCGImage(cropped, from: cropped.extent) else { return }
+        let saveCG = downscaledIfNeeded(processedCG)
+        let timestamp = Date()
+        let location = currentLocation
+
+        // 生メタデータを基準にして保存：レンズ情報・絞り・焦点距離など Apple が自動付与した EXIF を温存
+        guard let imageData = buildImageDataFromPhotoMetadata(
+            cgImage: saveCG,
+            photoMetadata: photo.metadata,
+            location: location,
+            timestamp: timestamp
+        ) else { return }
+
+        // 画面表示用の構造体（EXIF とは別の in-app 表示パス）
+        let device = currentDevice
+        let zoom = device?.videoZoomFactor ?? 1.0
+        let effectiveFOV = (device?.activeFormat.videoFieldOfView ?? 0) / Float(zoom)
+        let stabLabel: String
+        switch videoConnection?.activeVideoStabilizationMode {
+        case .standard:          stabLabel = "スタンダード"
+        case .cinematic:         stabLabel = "シネマティック"
+        case .cinematicExtended: stabLabel = "シネマティック拡張"
+        case .previewOptimized:  stabLabel = "プレビュー最適化"
+        default:                 stabLabel = "オフ"
+        }
+        let inAppMetadata = CaptureMetadata(
+            timestamp: timestamp,
+            location: location,
+            iso: device?.iso ?? 0,
+            exposureDuration: device?.exposureDuration ?? .zero,
+            lensAperture: device?.lensAperture ?? 0,
+            zoomFactor: zoom,
+            fieldOfView: effectiveFOV,
+            lensType: "広角",
+            deviceModel: UIDevice.current.model,
+            imageSize: CGSize(width: saveCG.width, height: saveCG.height),
+            stabilizationMode: stabLabel
+        )
+        Task { @MainActor [weak self] in
+            self?.saveToPhotoLibrary(data: imageData, metadata: inAppMetadata)
+        }
+    }
+
+    /// 写真の AVFoundation 生メタデータを基準に HEIC を生成。
+    /// レンズ情報（LensModel／LensSpecification）、焦点距離、絞り、ISO、露出時間など
+    /// Apple が自動付与する EXIF を全て保持し、向き・寸法・GPS だけ上書きする。
+    nonisolated private func buildImageDataFromPhotoMetadata(
+        cgImage: CGImage,
+        photoMetadata: [String: Any],
+        location: CLLocation?,
+        timestamp: Date
+    ) -> Data? {
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(
+            data, UTType.heic.identifier as CFString, 1, nil
+        ) else { return nil }
+
+        var props = photoMetadata
+        props[kCGImageDestinationLossyCompressionQuality as String] = 0.95
+        // ピクセル空間で既に回転済みなので EXIF / TIFF orientation は 1（Up）に固定
+        props[kCGImagePropertyOrientation as String] = 1
+
+        // EXIF：寸法をクロップ後・ダウンスケール後の値に上書き、その他のレンズ情報等は温存
+        var exif = (props[kCGImagePropertyExifDictionary as String] as? [String: Any]) ?? [:]
+        exif[kCGImagePropertyExifPixelXDimension as String] = cgImage.width
+        exif[kCGImagePropertyExifPixelYDimension as String] = cgImage.height
+        props[kCGImagePropertyExifDictionary as String] = exif
+
+        // TIFF：orientation を 1 に、Software をアプリ名に
+        var tiff = (props[kCGImagePropertyTIFFDictionary as String] as? [String: Any]) ?? [:]
+        tiff[kCGImagePropertyTIFFOrientation as String] = 1
+        tiff[kCGImagePropertyTIFFSoftware as String] = "Silent Camera"
+        props[kCGImagePropertyTIFFDictionary as String] = tiff
+
+        // GPS：位置情報があれば付与
+        if let loc = location {
+            let c = loc.coordinate
+            props[kCGImagePropertyGPSDictionary as String] = [
+                kCGImagePropertyGPSLatitude as String:          abs(c.latitude),
+                kCGImagePropertyGPSLatitudeRef as String:       c.latitude >= 0 ? "N" : "S",
+                kCGImagePropertyGPSLongitude as String:         abs(c.longitude),
+                kCGImagePropertyGPSLongitudeRef as String:      c.longitude >= 0 ? "E" : "W",
+                kCGImagePropertyGPSAltitude as String:          loc.altitude,
+                kCGImagePropertyGPSAltitudeRef as String:       loc.altitude < 0 ? 1 : 0,
+                kCGImagePropertyGPSTimeStamp as String:         gpsTime(timestamp),
+                kCGImagePropertyGPSDateStamp as String:         gpsDate(timestamp),
+                kCGImagePropertyGPSHPositioningError as String: loc.horizontalAccuracy,
+            ]
+        }
+
+        CGImageDestinationAddImage(dest, cgImage, props as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        return data as Data
     }
 
     func startRecording() {
@@ -211,8 +609,16 @@ class CameraManager: NSObject, ObservableObject {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("mov")
+        // 録画開始の瞬間のデバイスの向きを動画ファイルの回転メタデータに焼き込む
+        let rotationAngle = videoRotationAngle(for: currentUIRotation)
+        let videoMetadata = buildMovieMetadata()
         sessionQueue.async { [weak self] in
             guard let self else { return }
+            if let conn = self.movieOutput.connection(with: .video),
+               conn.isVideoRotationAngleSupported(rotationAngle) {
+                conn.videoRotationAngle = rotationAngle
+            }
+            self.movieOutput.metadata = videoMetadata
             self.movieOutput.startRecording(to: url, recordingDelegate: self)
         }
         isRecording = true
@@ -227,8 +633,48 @@ class CameraManager: NSObject, ObservableObject {
         }
     }
 
+    /// 動画ファイルに埋め込む QuickTime メタデータを構築
+    private func buildMovieMetadata() -> [AVMetadataItem] {
+        let device = currentDevice
+        let lensName = device?.localizedName ?? "iPhone Camera"
+        let make = AVMutableMetadataItem()
+        make.identifier = .quickTimeMetadataMake
+        make.value = "Apple" as NSString
+        make.dataType = kCMMetadataBaseDataType_UTF8 as String
+        let model = AVMutableMetadataItem()
+        model.identifier = .quickTimeMetadataModel
+        model.value = UIDevice.current.model as NSString
+        model.dataType = kCMMetadataBaseDataType_UTF8 as String
+        let software = AVMutableMetadataItem()
+        software.identifier = .quickTimeMetadataSoftware
+        software.value = "Silent Camera" as NSString
+        software.dataType = kCMMetadataBaseDataType_UTF8 as String
+        // レンズ名（例：Back Triple Camera）
+        let lens = AVMutableMetadataItem()
+        lens.identifier = AVMetadataIdentifier(rawValue: "mdta/com.apple.quicktime.camera.lens.model")
+        lens.value = lensName as NSString
+        lens.dataType = kCMMetadataBaseDataType_UTF8 as String
+        // 撮影日時
+        let creationDate = AVMutableMetadataItem()
+        creationDate.identifier = .quickTimeMetadataCreationDate
+        creationDate.value = ISO8601DateFormatter().string(from: Date()) as NSString
+        creationDate.dataType = kCMMetadataBaseDataType_UTF8 as String
+        return [make, model, software, lens, creationDate]
+    }
+
+    /// `currentUIRotation` (0 / 90 / -90 / 180) を AVCaptureConnection.videoRotationAngle に変換
+    nonisolated private func videoRotationAngle(for uiRotation: Double) -> CGFloat {
+        switch uiRotation {
+        case 90:   return 0
+        case -90:  return 180
+        case 180:  return 270
+        default:   return 90
+        }
+    }
+
     func stopRecording() {
         guard isRecording else { return }
+        feedback(.recordingStop)
         isRecordingUnsafe = false
         sessionQueue.async { [weak self] in self?.movieOutput.stopRecording() }
         recordingTimerTask?.cancel()
@@ -237,6 +683,7 @@ class CameraManager: NSObject, ObservableObject {
 
     func cancelRecording() {
         guard isRecording else { return }
+        feedback(.recordingStop)
         isRecordingUnsafe = false
         discardNextRecording = true
         sessionQueue.async { [weak self] in self?.movieOutput.stopRecording() }
@@ -248,11 +695,9 @@ class CameraManager: NSObject, ObservableObject {
         guard !isRecording else { return }
         videoQuality = quality
         currentVideoQuality = quality
-        guard let device = currentDevice else { return }
+        // フォーマットは常に最大のまま。録画ビットレートと保存時の export preset だけ更新
         sessionQueue.async { [weak self] in
             guard let self else { return }
-            self.session.beginConfiguration()
-            self.selectBestFormat(for: device)
             if let conn = self.movieOutput.connection(with: .video) {
                 self.movieOutput.setOutputSettings(
                     [AVVideoCodecKey: AVVideoCodecType.hevc,
@@ -260,7 +705,6 @@ class CameraManager: NSObject, ObservableObject {
                     for: conn
                 )
             }
-            self.session.commitConfiguration()
         }
     }
 
@@ -325,6 +769,15 @@ class CameraManager: NSObject, ObservableObject {
                      AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: self.currentVideoQuality.bitRate] as [String: Any]],
                     for: conn
                 )
+            }
+
+            if let conn = self.photoOutput.connection(with: .video) {
+                if conn.isVideoRotationAngleSupported(90) { conn.videoRotationAngle = 90 }
+                if conn.isVideoMirroringSupported { conn.isVideoMirrored = useFront }
+            }
+            // カメラ切替後も新しいフォーマットの最大解像度に追従
+            if let maxDims = device.activeFormat.supportedMaxPhotoDimensions.last {
+                self.photoOutput.maxPhotoDimensions = maxDims
             }
 
             if #available(iOS 18.0, *), self.session.supportsControls {
@@ -442,6 +895,7 @@ class CameraManager: NSObject, ObservableObject {
         let steps = 20
         let stepNanos = UInt64(duration / Double(steps) * 1_000_000_000)
         Task { @MainActor in
+            self.isAnimatingZoom = true
             for i in 1...steps {
                 let t = CGFloat(i) / CGFloat(steps)
                 let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
@@ -449,6 +903,16 @@ class CameraManager: NSObject, ObservableObject {
                 try? await Task.sleep(nanoseconds: stepNanos)
             }
             self.setZoom(target)
+            self.isAnimatingZoom = false
+            // 終点がプリセット相当なら 1 回だけティック
+            let w = self.currentWideAngleZoom
+            if w > 0 {
+                let userTarget = target / w
+                for preset in Self.zoomPresets where abs(userTarget - preset) < 0.05 {
+                    self.fireZoomTickIfAllowed()
+                    break
+                }
+            }
             self.commitZoom()
         }
     }
@@ -463,6 +927,8 @@ class CameraManager: NSObject, ObservableObject {
 
     private let motionManager = CMMotionManager()
     private var recordingTimerTask: Task<Void, Never>?
+    private var muteCheckTask: Task<Void, Never>?
+    private var isDetectingMute = false
 
     var maxZoomFactor: CGFloat {
         min(currentDevice?.maxAvailableVideoZoomFactor ?? 1.0, 25.0)
@@ -516,12 +982,15 @@ class CameraManager: NSObject, ObservableObject {
     private func setupSession() {
         previewLayer.session = session
         session.automaticallyConfiguresApplicationAudioSession = false
-        try? AVAudioSession.sharedInstance().setCategory(
+        let audio = AVAudioSession.sharedInstance()
+        try? audio.setCategory(
             .playAndRecord,
             mode: .videoRecording,
             options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
         )
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // 録画中もハプティック／システム音を鳴らす許可（これが無いと .playAndRecord 中は全ハプティックが抑制される）
+        try? audio.setAllowHapticsAndSystemSoundsDuringRecording(true)
+        try? audio.setActive(true)
 
         sessionQueue.async { [weak self] in
             guard let self else { return }
@@ -593,6 +1062,30 @@ class CameraManager: NSObject, ObservableObject {
                 }
             }
 
+            // フル解像度の写真を AVCapturePhotoOutput で撮影（シャッター音は delegate で破棄）
+            if self.session.canAddOutput(self.photoOutput) {
+                self.session.addOutput(self.photoOutput)
+                if let conn = self.photoOutput.connection(with: .video),
+                   conn.isVideoRotationAngleSupported(90) {
+                    conn.videoRotationAngle = 90
+                }
+                // 画質優先（48MP 等の高解像度を取得するために必要）
+                self.photoOutput.maxPhotoQualityPrioritization = .quality
+                // iOS 17+: 速度優先機能を切って画質優先（24MP 取得のために必要）
+                if #available(iOS 17.0, *) {
+                    if self.photoOutput.isResponsiveCaptureSupported {
+                        self.photoOutput.isResponsiveCaptureEnabled = false
+                    }
+                    if self.photoOutput.isAutoDeferredPhotoDeliverySupported {
+                        self.photoOutput.isAutoDeferredPhotoDeliveryEnabled = false
+                    }
+                }
+                // センサー最大解像度（48MP など）まで許可
+                if let maxDims = device.activeFormat.supportedMaxPhotoDimensions.last {
+                    self.photoOutput.maxPhotoDimensions = maxDims
+                }
+            }
+
             self.session.commitConfiguration()
             self.session.startRunning()
 
@@ -636,17 +1129,17 @@ class CameraManager: NSObject, ObservableObject {
     }
 
     private func selectBestFormat(for device: AVCaptureDevice) {
-        let maxShort = currentVideoQuality.maxShortSide
+        // preview / センサー出力は常にデバイス最大フォーマット
+        // 写真側はフォーマットの supportedMaxPhotoDimensions を最優先、
+        // 同じ写真上限なら動画側の解像度が大きいほうを選ぶ。
         let best = device.formats
-            .filter {
-                let dim = CMVideoFormatDescriptionGetDimensions($0.formatDescription)
-                let short = Int(min(dim.width, dim.height))
-                return short <= maxShort &&
-                       $0.videoSupportedFrameRateRanges.contains { $0.maxFrameRate >= 30 }
-            }
-            .max {
-                let dA = CMVideoFormatDescriptionGetDimensions($0.formatDescription)
-                let dB = CMVideoFormatDescriptionGetDimensions($1.formatDescription)
+            .filter { $0.videoSupportedFrameRateRanges.contains { $0.maxFrameRate >= 30 } }
+            .max { a, b in
+                let photoA = a.supportedMaxPhotoDimensions.last.map { Int($0.width) * Int($0.height) } ?? 0
+                let photoB = b.supportedMaxPhotoDimensions.last.map { Int($0.width) * Int($0.height) } ?? 0
+                if photoA != photoB { return photoA < photoB }
+                let dA = CMVideoFormatDescriptionGetDimensions(a.formatDescription)
+                let dB = CMVideoFormatDescriptionGetDimensions(b.formatDescription)
                 return Int(dA.width) * Int(dA.height) < Int(dB.width) * Int(dB.height)
             }
         guard let fmt = best, let _ = try? device.lockForConfiguration() else { return }
@@ -671,43 +1164,7 @@ class CameraManager: NSObject, ObservableObject {
             self?._currentZoom = wideZoom
             self?.zoomFactor = wideZoom
         }
-    }
 
-    // MARK: - Capture Processing
-
-    nonisolated private func processFrame(_ cgImage: CGImage) {
-        let timestamp = Date()
-        let zoom = currentDevice?.videoZoomFactor ?? 1.0
-        let effectiveFOV = (currentDevice?.activeFormat.videoFieldOfView ?? 0) / Float(zoom)
-
-        let stabilizationLabel: String
-        switch videoConnection?.activeVideoStabilizationMode {
-        case .standard:          stabilizationLabel = "スタンダード"
-        case .cinematic:         stabilizationLabel = "シネマティック"
-        case .cinematicExtended: stabilizationLabel = "シネマティック拡張"
-        case .previewOptimized:  stabilizationLabel = "プレビュー最適化"
-        default:                 stabilizationLabel = "オフ"
-        }
-
-        let metadata = CaptureMetadata(
-            timestamp: timestamp,
-            location: currentLocation,
-            iso: currentDevice?.iso ?? 0,
-            exposureDuration: currentDevice?.exposureDuration ?? .zero,
-            lensAperture: currentDevice?.lensAperture ?? 0,
-            zoomFactor: zoom,
-            fieldOfView: effectiveFOV,
-            lensType: "広角",
-            deviceModel: UIDevice.current.model,
-            imageSize: CGSize(width: cgImage.width, height: cgImage.height),
-            stabilizationMode: stabilizationLabel
-        )
-
-        guard let imageData = buildImageData(cgImage: cgImage, metadata: metadata) else { return }
-
-        Task { @MainActor [weak self] in
-            self?.saveToPhotoLibrary(data: imageData, metadata: metadata)
-        }
     }
 
     // MARK: - Photo Library
@@ -737,14 +1194,51 @@ class CameraManager: NSObject, ObservableObject {
 
     // MARK: - HEIC Build
 
-    nonisolated private func buildImageData(cgImage: CGImage, metadata: CaptureMetadata) -> Data? {
+    /// 現在の保存品質設定に従って短辺を上限以下に縮小する。原寸で良ければそのまま返す。
+    nonisolated private func downscaledIfNeeded(_ cgImage: CGImage) -> CGImage {
+        let maxShort = currentVideoQuality.maxShortSide
+        let w = cgImage.width
+        let h = cgImage.height
+        let short = min(w, h)
+        guard short > maxShort else { return cgImage }
+        let scale = CGFloat(maxShort) / CGFloat(short)
+        let newW = max(1, Int((CGFloat(w) * scale).rounded()))
+        let newH = max(1, Int((CGFloat(h) * scale).rounded()))
+        guard let cs = cgImage.colorSpace,
+              let ctx = CGContext(
+                  data: nil, width: newW, height: newH,
+                  bitsPerComponent: 8, bytesPerRow: 0,
+                  space: cs, bitmapInfo: cgImage.bitmapInfo.rawValue
+              ) else { return cgImage }
+        ctx.interpolationQuality = .high
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: newW, height: newH))
+        return ctx.makeImage() ?? cgImage
+    }
+
+    nonisolated private func buildImageData(cgImage: CGImage, metadata: CaptureMetadata, orientation: Int) -> Data? {
         let data = NSMutableData()
         guard let dest = CGImageDestinationCreateWithData(data, UTType.heic.identifier as CFString, 1, nil) else { return nil }
         var props = commonProps(metadata: metadata)
         props[kCGImageDestinationLossyCompressionQuality] = 0.95
+        // EXIF/TIFF orientation：写真ビューワが向きを補正する
+        props[kCGImagePropertyOrientation] = orientation
+        if var tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any] {
+            tiff[kCGImagePropertyTIFFOrientation] = orientation
+            props[kCGImagePropertyTIFFDictionary] = tiff
+        }
         CGImageDestinationAddImage(dest, cgImage, props as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { return nil }
         return data as Data
+    }
+
+    /// `currentUIRotation` (0 / 90 / -90 / 180) を CGImagePropertyOrientation 値に変換
+    nonisolated private func exifOrientation(for uiRotation: Double) -> Int {
+        switch uiRotation {
+        case 180: return 3
+        case 90:  return 8
+        case -90: return 6
+        default:  return 1
+        }
     }
 
     nonisolated private func commonProps(metadata: CaptureMetadata) -> [CFString: Any] {
@@ -805,35 +1299,18 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
                                    didOutput sampleBuffer: CMSampleBuffer,
                                    from connection: AVCaptureConnection) {
         guard let buf = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        // preview だけのために動画フレームを CIImage 化して Metal に渡す（写真は AVCapturePhotoOutput 側で別取得）
         let ci = applyColorStyle(CIImage(cvPixelBuffer: buf), style: currentColorStyle)
         previewView.display(ci)
-        guard burstRemaining > 0 else { return }
-        burstRemaining -= 1
-        let score = sharpnessScore(ci)
-        if score > burstBestScore {
-            let radians = CGFloat(currentUIRotation * .pi / 180)
-            var saveCI = ci
-            if radians != 0 {
-                var rotated = ci.transformed(by: CGAffineTransform(rotationAngle: radians))
-                let tx = -rotated.extent.origin.x
-                let ty = -rotated.extent.origin.y
-                rotated = rotated.transformed(by: CGAffineTransform(translationX: tx, y: ty))
-                saveCI = rotated
-            }
-            let cropped = cropToAspectRatio(saveCI)
-            burstBestCG = ciContext.createCGImage(cropped, from: cropped.extent)
-            burstBestScore = score
-        }
-        if burstRemaining == 0, let bestCG = burstBestCG {
-            processFrame(bestCG)
-            burstBestCG = nil
-        }
     }
 
     nonisolated private func cropToAspectRatio(_ image: CIImage) -> CIImage {
         let ext = image.extent
         let currentWH = ext.width / ext.height
-        let targetWH = currentAspectRatio.previewRatio
+        // 入力が縦か横かで適用するアスペクト比のターゲットを切替
+        let portraitTarget = currentAspectRatio.previewRatio
+        let landscapeTarget: CGFloat = portraitTarget == 0 ? 1.0 : 1.0 / portraitTarget
+        let targetWH = currentWH >= 1.0 ? landscapeTarget : portraitTarget
         guard abs(currentWH - targetWH) > 0.01 else { return image }
         if currentWH > targetWH {
             let newW = ext.height * targetWH
@@ -846,25 +1323,6 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
     }
 
-    /// Laplacian variance を使った鮮鋭度スコア（高いほどシャープ）
-    nonisolated private func sharpnessScore(_ image: CIImage) -> CGFloat {
-        let scale = 100.0 / max(image.extent.width, 1)
-        let small = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let weights = CIVector(values: [0, -1, 0, -1, 4, -1, 0, -1, 0], count: 9)
-        guard let lap = CIFilter(name: "CIConvolution3X3",
-                                  parameters: [kCIInputImageKey: small,
-                                               "inputWeights": weights,
-                                               "inputBias": 0.0])?.outputImage,
-              let avg = CIFilter(name: "CIAreaAverage",
-                                  parameters: [kCIInputImageKey: lap,
-                                               kCIInputExtentKey: CIVector(cgRect: lap.extent)])?.outputImage
-        else { return 0 }
-        var pixel = [Float](repeating: 0, count: 4)
-        ciContext.render(avg, toBitmap: &pixel, rowBytes: 16,
-                         bounds: CGRect(x: avg.extent.minX, y: avg.extent.minY, width: 1, height: 1),
-                         format: .RGBAf, colorSpace: nil)
-        return CGFloat(pixel[0] + pixel[1] + pixel[2])
-    }
 
     nonisolated private func applyColorStyle(_ image: CIImage, style: Int) -> CIImage {
         switch style {
@@ -970,11 +1428,24 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
         let transformed = naturalSize.applying(transform)
         let displayW = abs(transformed.width)
         let displayH = abs(transformed.height)
-        let targetRatio = aspectRatio.previewRatio  // width/height
         let currentRatio = displayW / displayH
+        // 動画の向き（縦／横）に応じてターゲットアスペクトを切り替える
+        // previewRatio は常に縦向き想定（< 1）なので、横向き動画ならその逆数を使う
+        let portraitTarget = aspectRatio.previewRatio
+        let landscapeTarget: CGFloat = portraitTarget == 0 ? 1.0 : 1.0 / portraitTarget
+        let targetRatio = currentRatio >= 1.0 ? landscapeTarget : portraitTarget
         guard abs(currentRatio - targetRatio) > 0.02 else {
-            guard colorStyle > 0 else { return url }
-            return await applyColorFilter(to: url, style: colorStyle)
+            // クロップ不要：色味と画質ダウンスケールだけ判定
+            // applyColorFilter は currentVideoQuality.exportPreset を使うので、色味ありなら自動で縮小される
+            if colorStyle > 0 {
+                return await applyColorFilter(to: url, style: colorStyle)
+            }
+            // 色味なし＆4K 設定なら原寸のまま（最速）
+            if currentVideoQuality == .q4K {
+                return url
+            }
+            // 色味なし＆HD/SD 設定：export preset でダウンスケールだけ実施
+            return await transcode(at: url)
         }
 
         let renderW: CGFloat
@@ -1031,6 +1502,19 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
         let coloredURL = await applyColorFilter(to: outputURL, style: colorStyle)
         try? FileManager.default.removeItem(at: outputURL)
         return coloredURL
+    }
+
+    /// クロップも色味も不要だが画質設定だけ下げたい場合のシンプルな再エンコード
+    nonisolated private func transcode(at url: URL) async -> URL {
+        let asset = AVURLAsset(url: url)
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString).appendingPathExtension("mov")
+        guard let exporter = AVAssetExportSession(
+            asset: asset, presetName: currentVideoQuality.exportPreset) else { return url }
+        exporter.outputURL = outputURL
+        exporter.outputFileType = .mov
+        await exporter.export()
+        return exporter.status == .completed ? outputURL : url
     }
 
     nonisolated private func applyColorFilter(to url: URL, style: Int) async -> URL {
@@ -1097,5 +1581,31 @@ final class MetalCameraPreview: MTKView, MTKViewDelegate {
                     colorSpace: CGColorSpaceCreateDeviceRGB())
         cmdBuf.present(drawable)
         cmdBuf.commit()
+    }
+}
+
+
+// MARK: - Photo Capture Delegate
+
+/// AVCapturePhotoOutput のキャプチャイベントを受け取り、シャッター音を破棄して
+/// 撮影完了時に CameraManager.processCapturedPhoto に渡す。
+final class PhotoCaptureProcessor: NSObject, AVCapturePhotoCaptureDelegate {
+    private weak var manager: CameraManager?
+
+    init(manager: CameraManager) {
+        self.manager = manager
+    }
+
+    /// シャッター音が再生される直前にシステムサウンド ID 1108 を破棄して無音化。
+    func photoOutput(_ output: AVCapturePhotoOutput,
+                     willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
+        AudioServicesDisposeSystemSoundID(1108)
+    }
+
+    func photoOutput(_ output: AVCapturePhotoOutput,
+                     didFinishProcessingPhoto photo: AVCapturePhoto,
+                     error: Error?) {
+        guard error == nil else { return }
+        manager?.processCapturedPhoto(photo)
     }
 }

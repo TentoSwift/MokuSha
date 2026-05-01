@@ -28,6 +28,8 @@ struct ContentView: View {
     @State private var cameraFlipDegrees: Double = 0
     @State private var cameraControlLongPressTask: Task<Void, Never>? = nil
     @State private var cameraControlIsLongPress = false
+    @State private var showTipJar = false
+    @AppStorage("showCompositionGuides") private var showCompositionGuides = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let slideThreshold: CGFloat = 60
@@ -88,6 +90,9 @@ struct ContentView: View {
                 MetadataView(metadata: metadata)
             }
         }
+        .sheet(isPresented: $showTipJar) {
+            TipJarView()
+        }
     }
 
     // MARK: - Top Bar
@@ -122,18 +127,20 @@ struct ContentView: View {
                 .transition(.opacity)
             }
 
-            if camera.isSilentSwitchOn {
+            Button {
+                camera.isSilentMode.toggle()
+            } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "bell.slash.fill")
+                    Image(systemName: camera.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill")
                         .font(.system(size: 11, weight: .semibold))
-                    Text("マナーモード")
+                    Text(camera.isSilentMode ? "無音" : "音あり")
                         .font(.system(size: 11, weight: .semibold))
                 }
-                .foregroundStyle(.yellow)
+                .foregroundStyle(camera.isSilentMode ? .yellow : .white)
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .glassEffect(in: .capsule)
-                .transition(.opacity)
             }
+            .animation(.easeInOut(duration: 0.2), value: camera.isSilentMode)
 
             Spacer()
 
@@ -151,6 +158,26 @@ struct ContentView: View {
             } label: {
                 Text(camera.captureAspectRatio.rawValue)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
+            }
+            .topBarButton(isRecording: camera.isRecording)
+
+            Button {
+                showCompositionGuides.toggle()
+            } label: {
+                Image(systemName: showCompositionGuides ? "rectangle.split.3x3.fill" : "rectangle.split.3x3")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(showCompositionGuides ? .yellow : .white)
+                    .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
+            }
+            .topBarButton(isRecording: camera.isRecording)
+
+            Button {
+                showTipJar = true
+            } label: {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.pink)
                     .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
             }
             .topBarButton(isRecording: camera.isRecording)
@@ -186,6 +213,13 @@ struct ContentView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding()
+            }
+
+            if showCompositionGuides {
+                GridLinesOverlay()
+                    .allowsHitTesting(false)
+                LevelIndicator(rollDegrees: camera.deviceRollDegrees)
+                    .allowsHitTesting(false)
             }
 
             if showFocusIndicator, let pt = focusPoint {

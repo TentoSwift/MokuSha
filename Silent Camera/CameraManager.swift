@@ -228,8 +228,12 @@ class CameraManager: NSObject, ObservableObject {
     @Published var recordingDuration: TimeInterval = 0
     @Published var isFrontCamera: Bool = false
     @Published var videoQuality: VideoQuality = .q4K
-    /// マナーモード ON（直近の検知結果）
-    @Published var isSilentSwitchOn: Bool = false
+    /// 水平線インジケータ用のロール角度（度数）
+    @Published var deviceRollDegrees: Double = 0
+    /// 無音モード（true：シャッター音を消す／false：シャッター音を鳴らす）。設定は永続化。
+    @Published var isSilentMode: Bool = (UserDefaults.standard.object(forKey: "isSilentMode") as? Bool ?? true) {
+        didSet { UserDefaults.standard.set(isSilentMode, forKey: "isSilentMode") }
+    }
 
     private let videoOutput = AVCaptureVideoDataOutput()
     private let movieOutput = AVCaptureMovieFileOutput()
@@ -261,37 +265,6 @@ class CameraManager: NSObject, ObservableObject {
 
     func feedback(_ type: HapticManager.FeedbackType) {
         HapticManager.shared.play(type)
-    }
-
-    /// マナーモード状態を検知して `isSilentSwitchOn` を更新する。
-    /// `.playAndRecord` のままだと AudioServicesPlaySystemSound が silent switch を無視するため、
-    /// 一時的に `.ambient` に切り替える。検知が終わったら元の `.playAndRecord` に戻す。
-    func detectSilentSwitchState() async {
-        // 録画中／検知実行中は同時実行しない（音声セッション衝突防止）
-        guard !isRecording, !isDetectingMute else { return }
-        isDetectingMute = true
-        defer { isDetectingMute = false }
-
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.ambient, options: [.mixWithOthers])
-            try session.setActive(true)
-        } catch {
-            return
-        }
-        let isMuted: Bool = await withCheckedContinuation { continuation in
-            MuteChecker.shared.check { result in
-                continuation.resume(returning: result)
-            }
-        }
-        isSilentSwitchOn = isMuted
-        try? session.setCategory(
-            .playAndRecord,
-            mode: .videoRecording,
-            options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
-        )
-        try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
-        try? session.setActive(true)
     }
 
     private static let zoomPresets: [CGFloat] = [1.0, 2.0, 3.0, 5.0, 10.0, 25.0]
@@ -375,12 +348,6 @@ class CameraManager: NSObject, ObservableObject {
         PHPhotoLibrary.shared().register(self)
         fetchLatestPhoto()
         registerCaptureSessionObservers()
-        // セッション安定化のため少し待ってから初回マナーモード検知（1 回のみ）
-        muteCheckTask?.cancel()
-        muteCheckTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(1500))
-            await self?.detectSilentSwitchState()
-        }
     }
 
     /// 音声セッションの切替や他アプリへの切替などで AVCaptureSession が中断された場合に
@@ -433,8 +400,6 @@ class CameraManager: NSObject, ObservableObject {
 
     func stopSession() {
         if isRecording { stopRecording() }
-        muteCheckTask?.cancel()
-        muteCheckTask = nil
         sessionQueue.async { [weak self] in self?.session.stopRunning() }
         motionManager.stopAccelerometerUpdates()
         PHPhotoLibrary.shared().unregisterChangeObserver(self)
@@ -475,8 +440,7 @@ class CameraManager: NSObject, ObservableObject {
         settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
         // 画質優先：これがないと iOS は速度優先で 12MP に pixel-bin する
         settings.photoQualityPrioritization = .quality
-        print("[Capture] photoOutput.maxPhotoDimensions=\(photoOutput.maxPhotoDimensions.width)x\(photoOutput.maxPhotoDimensions.height) settings.maxPhotoDimensions=\(settings.maxPhotoDimensions.width)x\(settings.maxPhotoDimensions.height)")
-        let processor = PhotoCaptureProcessor(manager: self)
+        let processor = PhotoCaptureProcessor(manager: self, silentMode: isSilentMode)
         photoProcessor = processor  // delegate を retain
         photoOutput.capturePhoto(with: settings, delegate: processor)
     }
@@ -824,9 +788,14 @@ class CameraManager: NSObject, ObservableObject {
 
     private func startMotionDetection() {
         guard motionManager.isAccelerometerAvailable else { return }
-        motionManager.accelerometerUpdateInterval = 0.3
+        // 水平線インジケータをスムーズに表示するため 20Hz で更新
+        motionManager.accelerometerUpdateInterval = 0.05
         motionManager.startAccelerometerUpdates(to: .main) { [weak self] data, _ in
             guard let self, let acc = data?.acceleration else { return }
+            // ロール角度（縦持ち基準で水平方向の傾き、度数）
+            let roll = atan2(acc.x, -acc.y) * 180 / .pi
+            self.deviceRollDegrees = roll
+            // UI 回転判定（既存ロジック、閾値を超えた時だけ更新）
             let threshold = 0.5
             if abs(acc.x) > abs(acc.y) && abs(acc.x) > threshold {
                 let rot = acc.x > 0 ? -90.0 : 90.0
@@ -927,8 +896,6 @@ class CameraManager: NSObject, ObservableObject {
 
     private let motionManager = CMMotionManager()
     private var recordingTimerTask: Task<Void, Never>?
-    private var muteCheckTask: Task<Void, Never>?
-    private var isDetectingMute = false
 
     var maxZoomFactor: CGFloat {
         min(currentDevice?.maxAvailableVideoZoomFactor ?? 1.0, 25.0)
@@ -1591,15 +1558,20 @@ final class MetalCameraPreview: MTKView, MTKViewDelegate {
 /// 撮影完了時に CameraManager.processCapturedPhoto に渡す。
 final class PhotoCaptureProcessor: NSObject, AVCapturePhotoCaptureDelegate {
     private weak var manager: CameraManager?
+    private let silentMode: Bool
 
-    init(manager: CameraManager) {
+    init(manager: CameraManager, silentMode: Bool) {
         self.manager = manager
+        self.silentMode = silentMode
     }
 
-    /// シャッター音が再生される直前にシステムサウンド ID 1108 を破棄して無音化。
+    /// 無音モードのときだけシステムサウンド ID 1108（カメラシャッター音）を破棄して無音化。
+    /// 音ありモードのときは破棄せず、iOS 標準のシャッター音が鳴る。
     func photoOutput(_ output: AVCapturePhotoOutput,
                      willCapturePhotoFor resolvedSettings: AVCaptureResolvedPhotoSettings) {
-        AudioServicesDisposeSystemSoundID(1108)
+        if silentMode {
+            AudioServicesDisposeSystemSoundID(1108)
+        }
     }
 
     func photoOutput(_ output: AVCapturePhotoOutput,

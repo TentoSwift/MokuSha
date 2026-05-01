@@ -87,6 +87,54 @@ struct CircularZoomSlider: View {
     }
 }
 
+// MARK: - Composition Guides
+
+/// 三分割法のグリッドライン（rule of thirds）
+struct GridLinesOverlay: View {
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            Path { path in
+                // 縦線 2 本（width の 1/3, 2/3 位置）
+                path.move(to: CGPoint(x: w / 3, y: 0))
+                path.addLine(to: CGPoint(x: w / 3, y: h))
+                path.move(to: CGPoint(x: 2 * w / 3, y: 0))
+                path.addLine(to: CGPoint(x: 2 * w / 3, y: h))
+                // 横線 2 本（height の 1/3, 2/3 位置）
+                path.move(to: CGPoint(x: 0, y: h / 3))
+                path.addLine(to: CGPoint(x: w, y: h / 3))
+                path.move(to: CGPoint(x: 0, y: 2 * h / 3))
+                path.addLine(to: CGPoint(x: w, y: 2 * h / 3))
+            }
+            .stroke(.white.opacity(0.4), lineWidth: 0.5)
+        }
+    }
+}
+
+/// 水平線インジケータ：デバイスのロール角度を表示し、水平時に黄色で強調。
+struct LevelIndicator: View {
+    let rollDegrees: Double
+
+    private var isLevel: Bool { abs(rollDegrees) < 1.5 }
+
+    var body: some View {
+        ZStack {
+            // 基準線（画面に対して常に水平）
+            Capsule()
+                .fill(.white.opacity(0.35))
+                .frame(width: 70, height: 1.5)
+            // 世界基準の水平線（デバイスのロールと逆向きに回転 → 重力に対して常に水平）
+            Capsule()
+                .fill(isLevel ? Color.yellow : Color.white.opacity(0.85))
+                .frame(width: 70, height: 1.5)
+                .rotationEffect(.degrees(-rollDegrees))
+        }
+        .animation(.linear(duration: 0.05), value: rollDegrees)
+        .animation(.easeInOut(duration: 0.15), value: isLevel)
+    }
+}
+
 // MARK: - Focus Indicator
 
 struct FocusIndicator: View {

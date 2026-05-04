@@ -226,6 +226,31 @@ struct FocusIndicator: View {
     }
 }
 
+// MARK: - Zoom Preset Glass Modifier
+
+/// iOS 26: 選択時に黄色 tint の interactive glass、非選択は透明 glass。
+/// iOS 25 以下: 選択時に黄色塗り、非選択は半透明 material でフォールバック。
+private struct ZoomPresetGlassModifier: ViewModifier {
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive().tint(isSelected ? .yellow : .clear), in: .circle)
+        } else {
+            content
+                .background(
+                    Group {
+                        if isSelected {
+                            Circle().fill(.yellow)
+                        } else {
+                            Circle().fill(.ultraThinMaterial)
+                        }
+                    }
+                )
+        }
+    }
+}
+
 // MARK: - Zoom Preset Button
 
 struct ZoomPresetButton: View {
@@ -245,7 +270,7 @@ struct ZoomPresetButton: View {
                 .frame(width: 44, height: 44)
                 .clipShape(Circle())
         }
-        .glassEffect(.regular.interactive().tint(isSelected ? .yellow : .clear), in: .circle)
+        .modifier(ZoomPresetGlassModifier(isSelected: isSelected))
         .opacity(isSelected ? 1 : 0.85)
     }
 }

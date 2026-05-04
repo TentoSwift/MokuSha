@@ -22,10 +22,29 @@ struct TopBarButtonModifier: ViewModifier {
     let isRecording: Bool
 
     func body(content: Content) -> some View {
-        content
-            .glassEffect(in: .circle)
-            .disabled(isRecording)
-            .opacity(isRecording ? 0.4 : 1.0)
+        Group {
+            if #available(iOS 26.0, *) {
+                content.glassEffect(in: .circle)
+            } else {
+                // iOS 18.6–25.x: 半透明グレーの円形背景でフォールバック
+                content.background(.ultraThinMaterial, in: Circle())
+            }
+        }
+        .disabled(isRecording)
+        .opacity(isRecording ? 0.4 : 1.0)
+    }
+}
+
+// MARK: - Glass Prominent Button (iOS 26+ → fallback)
+
+/// iOS 26 では `.glassProminent` ボタンスタイル、それ未満では `.borderedProminent` でフォールバック。
+struct GlassProminentButtonModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.buttonStyle(.glassProminent)
+        } else {
+            content.buttonStyle(.borderedProminent)
+        }
     }
 }
 
@@ -38,5 +57,35 @@ extension View {
 
     func topBarButton(isRecording: Bool) -> some View {
         modifier(TopBarButtonModifier(isRecording: isRecording))
+    }
+
+    /// iOS 26 では Liquid Glass、それ未満では `.ultraThinMaterial` でフォールバック表示。
+    @ViewBuilder
+    func compatibleGlassEffect<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(in: shape)
+        } else {
+            self.background(.ultraThinMaterial, in: shape)
+        }
+    }
+
+    /// `compatibleGlassEffect` の Capsule 用ショートカット。
+    @ViewBuilder
+    func compatibleGlassEffectCapsule() -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(in: .capsule)
+        } else {
+            self.background(.ultraThinMaterial, in: Capsule())
+        }
+    }
+
+    /// `compatibleGlassEffect` の RoundedRectangle 用ショートカット。
+    @ViewBuilder
+    func compatibleGlassEffectRoundedRect(cornerRadius: CGFloat) -> some View {
+        if #available(iOS 26.0, *) {
+            self.glassEffect(in: .rect(cornerRadius: cornerRadius))
+        } else {
+            self.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
     }
 }

@@ -129,7 +129,7 @@ struct ContentView: View {
                     }
                 }
                 .padding(.horizontal, 14).padding(.vertical, 6)
-                .glassEffect(in: .capsule)
+                .compatibleGlassEffectCapsule()
                 .transition(.opacity)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(isRecordingLocked
@@ -149,7 +149,7 @@ struct ContentView: View {
                 }
                 .foregroundStyle(camera.isSilentMode ? .yellow : .white)
                 .padding(.horizontal, 10).padding(.vertical, 5)
-                .glassEffect(in: .capsule)
+                .compatibleGlassEffectCapsule()
             }
             .animation(.easeInOut(duration: 0.2), value: camera.isSilentMode)
             .accessibilityLabel(camera.isSilentMode ? "無音モード、シャッター音は鳴りません" : "音ありモード、シャッター音が鳴ります")
@@ -227,7 +227,7 @@ struct ContentView: View {
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
                     }
-                    .buttonStyle(.glassProminent)
+                    .modifier(GlassProminentButtonModifier())
                 }
                 .padding()
             }
@@ -292,7 +292,7 @@ struct ContentView: View {
                 ZStack {
                     Capsule()
                         .frame(width: 100, height: 40)
-                        .glassEffect(.regular.tint(.clear))
+                        .compatibleGlassEffectCapsule()
                     Text(String(format: "%.1fx", lastZoom / camera.wideAngleZoomFactor))
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
@@ -404,14 +404,14 @@ struct ContentView: View {
                                 } label: {
                                     Circle()
                                         .frame(width: 70, height: 70)
-                                        .glassEffect(.regular)
+                                        .compatibleGlassEffect(in: Circle())
                                 }
                                 .buttonStyle(.plain)
                             } else if camera.isRecording {
                                 let progress = targetOffset > 0 ? 0.25 + 0.75 * Double(shutterDragOffset / targetOffset) : 0.25
                                 Circle()
                                     .frame(width: 70, height: 70)
-                                    .glassEffect(.regular)
+                                    .compatibleGlassEffect(in: Circle())
                                     .opacity(progress)
                                 Image(systemName: "lock.fill")
                                     .font(.system(size: 18, weight: .semibold))
@@ -427,7 +427,7 @@ struct ContentView: View {
                     ZStack {
                         Circle()
                             .frame(width: 78, height: 78)
-                            .glassEffect(.regular)
+                            .compatibleGlassEffect(in: Circle())
 
                         if isRecordingLocked {
                             // ロック中：停止アイコン（スケールなし）

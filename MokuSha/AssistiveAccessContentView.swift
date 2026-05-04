@@ -13,6 +13,21 @@
 import SwiftUI
 import AVFoundation
 
+// MARK: - iOS 26+ アシスティブアクセス用 navigation icon ヘルパー
+
+extension View {
+    /// `assistiveAccessNavigationIcon(systemImage:)` の iOS バージョン互換ラッパー。
+    /// iOS 26 未満では何もしない（Apple 側の自動適応 UI が代わりに使われる）。
+    @ViewBuilder
+    func compatibleAssistiveAccessNavigationIcon(systemImage: String) -> some View {
+        if #available(iOS 26.0, *) {
+            self.assistiveAccessNavigationIcon(systemImage: systemImage)
+        } else {
+            self
+        }
+    }
+}
+
 // MARK: - Root: 選択画面
 
 struct AssistiveAccessContentView: View {
@@ -62,7 +77,7 @@ private struct AssistiveAccessSelectionView: View {
         }
         .padding(.horizontal, 24)
         .navigationTitle("撮影")
-        .assistiveAccessNavigationIcon(systemImage: "camera.aperture")
+        .compatibleAssistiveAccessNavigationIcon(systemImage: "camera.aperture")
     }
 }
 
@@ -106,7 +121,7 @@ private struct AssistiveAccessPhotoCaptureView: View {
             }
         }
         .navigationTitle("写真")
-        .assistiveAccessNavigationIcon(systemImage: "camera.fill")
+        .compatibleAssistiveAccessNavigationIcon(systemImage: "camera.fill")
         .onAppear {
             camera.isSilentMode = true
             camera.startSession()
@@ -212,7 +227,7 @@ private struct AssistiveAccessVideoCaptureView: View {
             }
         }
         .navigationTitle(camera.isRecording ? "録画中" : "動画")
-        .assistiveAccessNavigationIcon(systemImage: "video.fill")
+        .compatibleAssistiveAccessNavigationIcon(systemImage: "video.fill")
         .onAppear {
             camera.isSilentMode = true
             camera.startSession()
@@ -308,8 +323,7 @@ private struct AAConfirmationToast: View {
                     .foregroundStyle(.white)
             }
             .padding(.horizontal, 22).padding(.vertical, 14)
-            .background(.black.opacity(0.75), in: Capsule())
-            .padding(.top, 80)
+            .compatibleGlassEffectCapsule()
             Spacer()
         }
         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -332,6 +346,9 @@ private struct AAUnauthorizedView: View {
     }
 }
 
+#if compiler(>=6.2)
+@available(iOS 26.0, *)
 #Preview(traits: .assistiveAccess) {
     AssistiveAccessContentView()
 }
+#endif

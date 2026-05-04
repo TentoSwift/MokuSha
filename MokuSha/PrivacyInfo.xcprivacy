@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        プライバシーマニフェスト（MokuSha 本体）
+        - トラッキング: 行わない
+        - 第三者へのデータ送信: なし
+        - 収集データ: なし（撮影した写真・動画はユーザの写真ライブラリに保存されるのみ。
+          位置情報は EXIF として写真ファイルに埋め込まれるが、サーバーには送らない）
+        - Required Reason API:
+            - UserDefaults (CA92.1): @AppStorage で構図ガイド／触覚フィードバック等のユーザ設定を保持
+    -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- CA92.1: アプリ自身のユーザ設定（@AppStorage の構図ガイド／触覚 ON/OFF 等） -->
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

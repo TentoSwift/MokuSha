@@ -1,0 +1,72 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "B00D918D",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "6766148062",
+      "localizations" : [
+        {
+          "description" : "開発者にコーヒー 1 杯分のチップを送ります。",
+          "displayName" : "コーヒーをおごる",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "com.tento.MokuSha.tip.small",
+      "referenceName" : "コーヒーをおごる",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "8.99",
+      "familyShareable" : false,
+      "internalID" : "6766148299",
+      "localizations" : [
+        {
+          "description" : "開発者にランチ代相当のチップを送ります。",
+          "displayName" : "開発者に食事をごちそうする",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "com.tento.MokuSha.tip.medium",
+      "referenceName" : "食事をごちそうする",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6766134966",
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "LV3H7Q68W6",
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 799556654.02302396,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

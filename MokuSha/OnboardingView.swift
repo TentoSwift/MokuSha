@@ -67,14 +67,8 @@ struct OnboardingView: View {
                         )
                         
                         FeatureRow(
-                            icon: "camera.aperture",
-                            title: "高解像度な写真",
-                            description: "センサーのフル解像度で HEIC 保存。レンズ情報・GPS・絞り・ISO などの EXIF メタデータも自動で記録します。",
-                            iconWidth: featureIconWidth
-                        )
-                        FeatureRow(
                             icon: "video.fill",
-                            title: "HEVC 動画録画",
+                            title: "動画録画",
                             description: "シャッター長押しで録画開始、右スライドでハンズフリーロック。",
                             iconWidth: featureIconWidth
                         )

@@ -31,6 +31,10 @@ struct ContentView: View {
     @State private var showSettings = false
     @AppStorage("showCompositionGuides") private var showCompositionGuides = false
     @AppStorage("showHorizonLevel") private var showHorizonLevel = false
+    /// App Store スクリーンショット撮影用：true にするとカメラプレビューが PreviewMockup 画像で上書きされる
+    @AppStorage("screenshotMockupEnabled") private var useScreenshotMockup = false
+    /// 使用するモック画像のアセット名（PreviewMockup / PreviewMockup2）
+    @AppStorage("screenshotMockupAsset") private var screenshotMockupAsset = "PreviewMockup"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let slideThreshold: CGFloat = 60
@@ -80,6 +84,8 @@ struct ContentView: View {
             }
 
         }
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
         .onAppear { camera.startSession() }
         .onChange(of: camera.wideAngleZoomFactor) { lastZoom = camera.wideAngleZoomFactor }
         .onDisappear { camera.stopSession() }
@@ -208,6 +214,15 @@ struct ContentView: View {
                 .onTapGesture { location in
                     camera.focus(at: location)
                     showFocusAt(location)
+                }
+                // App Store スクリーンショット撮影モード：プレビューを画像で上書き。
+                // UserDefaults キー "screenshotMockupEnabled" を true にすると有効化される。
+                // 撮影完了後はトグルを OFF にすれば実際のカメラプレビューに戻る。
+                if useScreenshotMockup {
+                    Image(screenshotMockupAsset)
+                        .resizable()
+                        .scaledToFill()
+                        .allowsHitTesting(false)
                 }
             } else if camera.authorizationStatus == .denied {
                 VStack(spacing: 20) {

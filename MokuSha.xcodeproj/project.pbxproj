@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		2D0630132FA06A4200E17F9D /* MokuSha Capture Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 2D06300A2FA06A4200E17F9D /* MokuSha Capture Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2D77FD802FA3408D00B9B668 /* Mokusha.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2D77FD7F2FA3408D00B9B668 /* Mokusha.icon */; };
+		2DDCE0EB2FA8442B00A42F60 /* MokuSha-app-purchase.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 2DDCE0EA2FA8442B00A42F60 /* MokuSha-app-purchase.storekit */; };
+		2DDCE0EC2FA8442B00A42F60 /* MokuSha-app-purchase.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 2DDCE0EA2FA8442B00A42F60 /* MokuSha-app-purchase.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,6 +41,7 @@
 		2D062E302FA040D600E17F9D /* MokuSha.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MokuSha.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D06300A2FA06A4200E17F9D /* MokuSha Capture Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = "MokuSha Capture Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D77FD7F2FA3408D00B9B668 /* Mokusha.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Mokusha.icon; sourceTree = "<group>"; };
+		2DDCE0EA2FA8442B00A42F60 /* MokuSha-app-purchase.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "MokuSha-app-purchase.storekit"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -106,6 +109,7 @@
 		2D062E272FA040D600E17F9D = {
 			isa = PBXGroup;
 			children = (
+				2DDCE0EA2FA8442B00A42F60 /* MokuSha-app-purchase.storekit */,
 				2D77FD7F2FA3408D00B9B668 /* Mokusha.icon */,
 				2D062E322FA040D600E17F9D /* MokuSha */,
 				2D06300B2FA06A4200E17F9D /* MokuSha Capture Extension */,
@@ -214,6 +218,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2DDCE0EB2FA8442B00A42F60 /* MokuSha-app-purchase.storekit in Resources */,
 				2D77FD802FA3408D00B9B668 /* Mokusha.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -222,6 +227,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2DDCE0EC2FA8442B00A42F60 /* MokuSha-app-purchase.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -381,12 +387,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202605042;
+				CURRENT_PROJECT_VERSION = 202605047;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MokuSha/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -395,12 +401,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tento.MokuSha;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -411,12 +421,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202605042;
+				CURRENT_PROJECT_VERSION = 202605047;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MokuSha/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -425,12 +435,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.tento.MokuSha;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -438,7 +452,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202505042;
+				CURRENT_PROJECT_VERSION = 202505047;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "MokuSha Capture Extension/Info.plist";
@@ -446,7 +460,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "カメラコントロールから撮影します。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "録画中にマイクを使用します。";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -457,11 +471,15 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -469,7 +487,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 202505042;
+				CURRENT_PROJECT_VERSION = 202505047;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "MokuSha Capture Extension/Info.plist";
@@ -477,7 +495,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "カメラコントロールから撮影します。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "録画中にマイクを使用します。";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -488,11 +506,15 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

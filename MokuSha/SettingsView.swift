@@ -153,6 +153,7 @@ struct SettingsView: View {
                     Text("MokuSha は完全無料・広告なしで提供されています。")
                         .font(.caption2)
                 }
+
             }
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.inline)

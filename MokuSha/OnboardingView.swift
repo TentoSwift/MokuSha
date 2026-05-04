@@ -35,7 +35,7 @@ struct OnboardingView: View {
                         VStack(spacing: 4) {
                             Text("ようこそ")
                                 .font(.largeTitle.weight(.bold))
-                            Text("Silent Camera へ")
+                            Text("MokuSha へ")
                                 .font(.largeTitle.weight(.bold))
                                 .foregroundStyle(.tint)
                         }
@@ -48,85 +48,89 @@ struct OnboardingView: View {
                     VStack(alignment: .leading, spacing: 22) {
                         FeatureRow(
                             icon: "speaker.slash.fill",
-                            tint: .yellow,
                             title: "完全無音シャッター",
                             description: "シャッター音を鳴らさずに写真撮影。寝ている赤ちゃん、ペット、静かな場所でも気を遣わずに撮れます。",
                             iconWidth: featureIconWidth
                         )
                         FeatureRow(
                             icon: "speaker.wave.2.fill",
-                            tint: .blue,
                             title: "音あり / 無音をワンタップで切替",
                             description: "通常のシャッター音で撮影したいときは画面上部のボタンで切替。シーンに合わせて使い分けできます。",
                             iconWidth: featureIconWidth
                         )
+                        
+                        FeatureCustomSymbolRow(
+                            icon: "iphone.camera.button",
+                            title: "カメラコントロールボタン対応",
+                            description: "カメラコントロールボタンから起動しスライドでズームしたり、押し込みで撮影したりすることができます。長押しすれば動画録画も開始できます。",
+                            iconWidth: featureIconWidth
+                        )
+                        
                         FeatureRow(
                             icon: "camera.aperture",
-                            tint: .orange,
                             title: "高解像度な写真",
                             description: "センサーのフル解像度で HEIC 保存。レンズ情報・GPS・絞り・ISO などの EXIF メタデータも自動で記録します。",
                             iconWidth: featureIconWidth
                         )
                         FeatureRow(
                             icon: "video.fill",
-                            tint: .red,
                             title: "HEVC 動画録画",
-                            description: "シャッター長押しで録画開始、右スライドでハンズフリーロック。色味・アスペクト比の設定もそのまま反映。",
+                            description: "シャッター長押しで録画開始、右スライドでハンズフリーロック。",
                             iconWidth: featureIconWidth
                         )
-                        FeatureRow(
-                            icon: "iphone.gen3",
-                            tint: .purple,
-                            title: "カメラコントロール対応",
-                            description: "iPhone 16 のカメラコントロールから起動 → スライドでズーム → 押し込みで撮影。長押しすれば動画録画も開始できます。",
-                            iconWidth: featureIconWidth
-                        )
+                        HStack(spacing: 8) {
+                            Image(systemName: "hand.raised.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("カメラ・マイク・写真ライブラリ・位置情報へのアクセスをこの後で許可してください。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .padding(.horizontal, 32)
                 }
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
+            // 上下端を gradient mask でフェードアウト
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.0),
+                        .init(color: .black, location: 0.06),
+                        .init(color: .black, location: 0.94),
+                        .init(color: .clear, location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .opacity(appearOpacity)
             .onAppear {
                 withAnimation(.easeOut(duration: 0.5)) { appearOpacity = 1 }
             }
         }
         // フッター（プライバシー注釈 + 続けるボタン）を画面下に固定
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    Image(systemName: "hand.raised.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("カメラ・マイク・写真ライブラリ・位置情報へのアクセスをこの後で許可してください。撮影データは端末内で処理され、外部に送信されません。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.horizontal, 32)
-
+        .toolbar {
+            ToolbarItem(placement: .bottomBar) {
                 Button(action: onContinue) {
-                    Text("続ける")
+                    Text("はじめる")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .brightness(0.1)
                 }
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
-                .padding(.horizontal, 28)
-                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.borderedProminent)
             }
-            .padding(.top, 12)
-            .background(.bar)
         }
     }
 }
 
 private struct FeatureRow: View {
     let icon: String
-    let tint: Color
     let title: String
     let description: String
     let iconWidth: CGFloat
@@ -135,7 +139,34 @@ private struct FeatureRow: View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(tint)
+                .foregroundStyle(.tint)
+                .frame(width: iconWidth)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct FeatureCustomSymbolRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    let iconWidth: CGFloat
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(icon)
+                .font(.title2)
+                .foregroundStyle(.tint)
                 .frame(width: iconWidth)
                 .accessibilityHidden(true)
 

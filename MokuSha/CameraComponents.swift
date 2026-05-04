@@ -112,26 +112,100 @@ struct GridLinesOverlay: View {
     }
 }
 
-/// 水平線インジケータ：デバイスのロール角度を表示し、水平時に黄色で強調。
+/// 水平線インジケータ：iOS 純正カメラの水平器と同じパターン。
+/// 画面中央高さに、3 分割された短い線を配置:
+///   - 左 1/3 と右 1/3 = 動かない固定の参照線
+///   - 中央 1/3 = デバイスのロールに合わせて回転する可動線
+/// 中央線が水平（左右と一直線）になった瞬間 = 水平が取れた瞬間に accent カラーで強調。
 struct LevelIndicator: View {
     let rollDegrees: Double
+    let uiRotationDegrees: Double
 
-    private var isLevel: Bool { abs(rollDegrees) < 1.5 }
+    /// 現在の向きに対する実効ロール（縦持ち時の rollDegrees に相当）。
+    /// rollDegrees + uiRotationDegrees をしてから [-180, 180] に正規化。
+    private var effectiveRoll: Double {
+        var diff = rollDegrees + uiRotationDegrees
+        while diff > 180 { diff -= 360 }
+        while diff < -180 { diff += 360 }
+        return diff
+    }
+
+    private var isLevel: Bool { abs(effectiveRoll) < 1.5 }
+
+    /// 横持ち（landscape）かどうか。uiRotationDegrees が ±90° 周辺で true。
+    private var isLandscapeOrientation: Bool {
+        let normalized = (uiRotationDegrees.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
+        return (normalized > 45 && normalized < 135) || (normalized > 225 && normalized < 315)
+    }
 
     var body: some View {
-        ZStack {
-            // 基準線（画面に対して常に水平）
-            Capsule()
-                .fill(.white.opacity(0.35))
-                .frame(width: 70, height: 1.5)
-            // 世界基準の水平線（デバイスのロールと逆向きに回転 → 重力に対して常に水平）
-            Capsule()
-                .fill(isLevel ? Color.yellow : Color.white.opacity(0.85))
-                .frame(width: 70, height: 1.5)
-                .rotationEffect(.degrees(-rollDegrees))
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let stub: CGFloat = 24 // 左右（上下）の固定参照線の長さ
+            let gap: CGFloat = 6   // 通常時にグリッドラインから離す距離
+            let color: Color = isLevel ? Color.accentColor : Color.white.opacity(0.55)
+            let thickness: CGFloat = isLevel ? 1.5 : 0.6
+
+            ZStack {
+                if isLandscapeOrientation {
+                    // 横持ち：縦レイアウトで横グリッドライン (h/3, 2h/3) に揃える
+                    let third = h / 3
+                    let centerLength: CGFloat = isLevel ? third : max(third - 2 * gap, 0)
+                    let topY: CGFloat    = isLevel ? (third - stub / 2)     : (third - gap - stub / 2)
+                    let bottomY: CGFloat = isLevel ? (2 * third + stub / 2) : (2 * third + gap + stub / 2)
+
+                    // 上の固定参照線（縦向きの短い線）
+                    Rectangle()
+                        .fill(color)
+                        .frame(width: thickness, height: stub)
+                        .position(x: w / 2, y: topY)
+
+                    // 下の固定参照線（縦向きの短い線）
+                    Rectangle()
+                        .fill(color)
+                        .frame(width: thickness, height: stub)
+                        .position(x: w / 2, y: bottomY)
+
+                    // 中央の可動線（縦向き、デバイス傾きで微回転）
+                    Rectangle()
+                        .fill(color)
+                        .frame(width: thickness, height: centerLength)
+                        .rotationEffect(.degrees(-effectiveRoll))
+                        .position(x: w / 2, y: h / 2)
+                } else {
+                    // 縦持ち（または上下逆）：横レイアウトで縦グリッドライン (w/3, 2w/3) に揃える
+                    let third = w / 3
+                    let centerWidth: CGFloat = isLevel ? third : max(third - 2 * gap, 0)
+                    let leftX: CGFloat  = isLevel ? (third - stub / 2)     : (third - gap - stub / 2)
+                    let rightX: CGFloat = isLevel ? (2 * third + stub / 2) : (2 * third + gap + stub / 2)
+
+                    // 左の固定参照線
+                    Rectangle()
+                        .fill(color)
+                        .frame(width: stub, height: thickness)
+                        .position(x: leftX, y: h / 2)
+
+                    // 右の固定参照線
+                    Rectangle()
+                        .fill(color)
+                        .frame(width: stub, height: thickness)
+                        .position(x: rightX, y: h / 2)
+
+                    // 中央の可動線（横向き、デバイス傾きで微回転）
+                    Rectangle()
+                        .fill(color)
+                        .frame(width: centerWidth, height: thickness)
+                        .rotationEffect(.degrees(-effectiveRoll))
+                        .position(x: w / 2, y: h / 2)
+                }
+            }
+            .frame(width: w, height: h)
         }
-        .animation(.linear(duration: 0.05), value: rollDegrees)
-        .animation(.easeInOut(duration: 0.15), value: isLevel)
+        .allowsHitTesting(false)
+        .animation(.linear(duration: 0.05), value: effectiveRoll)
+        .animation(.easeInOut(duration: 0.3), value: uiRotationDegrees)
+        .animation(.easeInOut(duration: 0.2), value: isLevel)
     }
 }
 

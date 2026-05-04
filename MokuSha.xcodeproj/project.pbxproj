@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2D0630132FA06A4200E17F9D /* Silent Camera Capture Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 2D06300A2FA06A4200E17F9D /* Silent Camera Capture Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		2D77FD802FA3408D00B9B668 /* SilentCamera.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2D77FD7F2FA3408D00B9B668 /* SilentCamera.icon */; };
+		2D0630132FA06A4200E17F9D /* MokuSha Capture Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 2D06300A2FA06A4200E17F9D /* MokuSha Capture Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2D77FD802FA3408D00B9B668 /* Mokusha.icon in Resources */ = {isa = PBXBuildFile; fileRef = 2D77FD7F2FA3408D00B9B668 /* Mokusha.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -17,7 +17,7 @@
 			containerPortal = 2D062E282FA040D600E17F9D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 2D0630092FA06A4200E17F9D;
-			remoteInfo = "Silent Camera Capture Extension";
+			remoteInfo = "MokuSha Capture Extension";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -28,7 +28,7 @@
 			dstPath = "$(EXTENSIONS_FOLDER_PATH)";
 			dstSubfolderSpec = 16;
 			files = (
-				2D0630132FA06A4200E17F9D /* Silent Camera Capture Extension.appex in Embed ExtensionKit Extensions */,
+				2D0630132FA06A4200E17F9D /* MokuSha Capture Extension.appex in Embed ExtensionKit Extensions */,
 			);
 			name = "Embed ExtensionKit Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -36,43 +36,51 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		2D062E302FA040D600E17F9D /* Silent Camera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Silent Camera.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2D06300A2FA06A4200E17F9D /* Silent Camera Capture Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = "Silent Camera Capture Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2D77FD7F2FA3408D00B9B668 /* SilentCamera.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = SilentCamera.icon; sourceTree = "<group>"; };
+		2D062E302FA040D600E17F9D /* MokuSha.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MokuSha.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2D06300A2FA06A4200E17F9D /* MokuSha Capture Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = "MokuSha Capture Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2D77FD7F2FA3408D00B9B668 /* Mokusha.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Mokusha.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		2D0630142FA06A4200E17F9D /* Exceptions for "Silent Camera Capture Extension" folder in "Silent Camera Capture Extension" target */ = {
+		2D0630142FA06A4200E17F9D /* Exceptions for "MokuSha Capture Extension" folder in "MokuSha Capture Extension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 2D0630092FA06A4200E17F9D /* Silent Camera Capture Extension */;
+			target = 2D0630092FA06A4200E17F9D /* MokuSha Capture Extension */;
 		};
-		2D06301A2FA06A5700E17F9D /* Exceptions for "Silent Camera" folder in "Silent Camera Capture Extension" target */ = {
+		2D06301A2FA06A5700E17F9D /* Exceptions for "MokuSha" folder in "MokuSha Capture Extension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				CaptureIntent.swift,
 			);
-			target = 2D0630092FA06A4200E17F9D /* Silent Camera Capture Extension */;
+			target = 2D0630092FA06A4200E17F9D /* MokuSha Capture Extension */;
+		};
+		2D0701010000000000000001 /* Exceptions for "MokuSha" folder in "MokuSha" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2D062E2F2FA040D600E17F9D /* MokuSha */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		2D062E322FA040D600E17F9D /* Silent Camera */ = {
+		2D062E322FA040D600E17F9D /* MokuSha */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				2D06301A2FA06A5700E17F9D /* Exceptions for "Silent Camera" folder in "Silent Camera Capture Extension" target */,
+				2D0701010000000000000001 /* Exceptions for "MokuSha" folder in "MokuSha" target */,
+				2D06301A2FA06A5700E17F9D /* Exceptions for "MokuSha" folder in "MokuSha Capture Extension" target */,
 			);
-			path = "Silent Camera";
+			path = MokuSha;
 			sourceTree = "<group>";
 		};
-		2D06300B2FA06A4200E17F9D /* Silent Camera Capture Extension */ = {
+		2D06300B2FA06A4200E17F9D /* MokuSha Capture Extension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				2D0630142FA06A4200E17F9D /* Exceptions for "Silent Camera Capture Extension" folder in "Silent Camera Capture Extension" target */,
+				2D0630142FA06A4200E17F9D /* Exceptions for "MokuSha Capture Extension" folder in "MokuSha Capture Extension" target */,
 			);
-			path = "Silent Camera Capture Extension";
+			path = "MokuSha Capture Extension";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -98,9 +106,9 @@
 		2D062E272FA040D600E17F9D = {
 			isa = PBXGroup;
 			children = (
-				2D77FD7F2FA3408D00B9B668 /* SilentCamera.icon */,
-				2D062E322FA040D600E17F9D /* Silent Camera */,
-				2D06300B2FA06A4200E17F9D /* Silent Camera Capture Extension */,
+				2D77FD7F2FA3408D00B9B668 /* Mokusha.icon */,
+				2D062E322FA040D600E17F9D /* MokuSha */,
+				2D06300B2FA06A4200E17F9D /* MokuSha Capture Extension */,
 				2D062E312FA040D600E17F9D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -108,8 +116,8 @@
 		2D062E312FA040D600E17F9D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2D062E302FA040D600E17F9D /* Silent Camera.app */,
-				2D06300A2FA06A4200E17F9D /* Silent Camera Capture Extension.appex */,
+				2D062E302FA040D600E17F9D /* MokuSha.app */,
+				2D06300A2FA06A4200E17F9D /* MokuSha Capture Extension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -117,9 +125,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2D062E2F2FA040D600E17F9D /* Silent Camera */ = {
+		2D062E2F2FA040D600E17F9D /* MokuSha */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2D062E3B2FA040D700E17F9D /* Build configuration list for PBXNativeTarget "Silent Camera" */;
+			buildConfigurationList = 2D062E3B2FA040D700E17F9D /* Build configuration list for PBXNativeTarget "MokuSha" */;
 			buildPhases = (
 				2D062E2C2FA040D600E17F9D /* Sources */,
 				2D062E2D2FA040D600E17F9D /* Frameworks */,
@@ -132,18 +140,18 @@
 				2D0630122FA06A4200E17F9D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				2D062E322FA040D600E17F9D /* Silent Camera */,
+				2D062E322FA040D600E17F9D /* MokuSha */,
 			);
-			name = "Silent Camera";
+			name = MokuSha;
 			packageProductDependencies = (
 			);
-			productName = "Silent Camera";
-			productReference = 2D062E302FA040D600E17F9D /* Silent Camera.app */;
+			productName = MokuSha;
+			productReference = 2D062E302FA040D600E17F9D /* MokuSha.app */;
 			productType = "com.apple.product-type.application";
 		};
-		2D0630092FA06A4200E17F9D /* Silent Camera Capture Extension */ = {
+		2D0630092FA06A4200E17F9D /* MokuSha Capture Extension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2D0630152FA06A4200E17F9D /* Build configuration list for PBXNativeTarget "Silent Camera Capture Extension" */;
+			buildConfigurationList = 2D0630152FA06A4200E17F9D /* Build configuration list for PBXNativeTarget "MokuSha Capture Extension" */;
 			buildPhases = (
 				2D0630062FA06A4200E17F9D /* Sources */,
 				2D0630072FA06A4200E17F9D /* Frameworks */,
@@ -154,13 +162,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				2D06300B2FA06A4200E17F9D /* Silent Camera Capture Extension */,
+				2D06300B2FA06A4200E17F9D /* MokuSha Capture Extension */,
 			);
-			name = "Silent Camera Capture Extension";
+			name = "MokuSha Capture Extension";
 			packageProductDependencies = (
 			);
-			productName = "Silent Camera Capture Extension";
-			productReference = 2D06300A2FA06A4200E17F9D /* Silent Camera Capture Extension.appex */;
+			productName = "MokuSha Capture Extension";
+			productReference = 2D06300A2FA06A4200E17F9D /* MokuSha Capture Extension.appex */;
 			productType = "com.apple.product-type.extensionkit-extension";
 		};
 /* End PBXNativeTarget section */
@@ -181,7 +189,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2D062E2B2FA040D600E17F9D /* Build configuration list for PBXProject "Silent Camera" */;
+			buildConfigurationList = 2D062E2B2FA040D600E17F9D /* Build configuration list for PBXProject "MokuSha" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -195,8 +203,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				2D062E2F2FA040D600E17F9D /* Silent Camera */,
-				2D0630092FA06A4200E17F9D /* Silent Camera Capture Extension */,
+				2D062E2F2FA040D600E17F9D /* MokuSha */,
+				2D0630092FA06A4200E17F9D /* MokuSha Capture Extension */,
 			);
 		};
 /* End PBXProject section */
@@ -206,7 +214,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2D77FD802FA3408D00B9B668 /* SilentCamera.icon in Resources */,
+				2D77FD802FA3408D00B9B668 /* Mokusha.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,7 +247,7 @@
 /* Begin PBXTargetDependency section */
 		2D0630122FA06A4200E17F9D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2D0630092FA06A4200E17F9D /* Silent Camera Capture Extension */;
+			target = 2D0630092FA06A4200E17F9D /* MokuSha Capture Extension */;
 			targetProxy = 2D0630112FA06A4200E17F9D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -369,29 +377,21 @@
 		2D062E3C2FA040D700E17F9D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = SilentCamera;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Mokusha;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "写真撮影に使用します";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "撮影した写真にGPS情報を記録します";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "録画中にマイクを使用します。";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "撮影した写真を保存します";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "写真ライブラリのサムネイルを表示します";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MokuSha/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.tento.Silent-Camera";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tento.MokuSha;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -406,29 +406,21 @@
 		2D062E3D2FA040D700E17F9D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = SilentCamera;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Mokusha;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "写真撮影に使用します";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "撮影した写真にGPS情報を記録します";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "録画中にマイクを使用します。";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "撮影した写真を保存します";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "写真ライブラリのサムネイルを表示します";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = MokuSha/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.tento.Silent-Camera";
+				PRODUCT_BUNDLE_IDENTIFIER = com.tento.MokuSha;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -447,8 +439,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Silent Camera Capture Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Silent Camera Capture Extension";
+				INFOPLIST_FILE = "MokuSha Capture Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MokuSha Capture Extension";
 				INFOPLIST_KEY_NSCameraUsageDescription = "カメラコントロールから撮影します。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "録画中にマイクを使用します。";
@@ -458,7 +450,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.tento.Silent-Camera.Silent-Camera-Capture-Extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tento.MokuSha.MokuSha-Capture-Extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -477,8 +469,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LV3H7Q68W6;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Silent Camera Capture Extension/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Silent Camera Capture Extension";
+				INFOPLIST_FILE = "MokuSha Capture Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "MokuSha Capture Extension";
 				INFOPLIST_KEY_NSCameraUsageDescription = "カメラコントロールから撮影します。";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "録画中にマイクを使用します。";
@@ -488,7 +480,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.tento.Silent-Camera.Silent-Camera-Capture-Extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.tento.MokuSha.MokuSha-Capture-Extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -503,7 +495,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2D062E2B2FA040D600E17F9D /* Build configuration list for PBXProject "Silent Camera" */ = {
+		2D062E2B2FA040D600E17F9D /* Build configuration list for PBXProject "MokuSha" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2D062E392FA040D700E17F9D /* Debug */,
@@ -512,7 +504,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2D062E3B2FA040D700E17F9D /* Build configuration list for PBXNativeTarget "Silent Camera" */ = {
+		2D062E3B2FA040D700E17F9D /* Build configuration list for PBXNativeTarget "MokuSha" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2D062E3C2FA040D700E17F9D /* Debug */,
@@ -521,7 +513,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2D0630152FA06A4200E17F9D /* Build configuration list for PBXNativeTarget "Silent Camera Capture Extension" */ = {
+		2D0630152FA06A4200E17F9D /* Build configuration list for PBXNativeTarget "MokuSha Capture Extension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2D0630162FA06A4200E17F9D /* Debug */,

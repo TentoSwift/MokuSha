@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import SwiftUI
 import AudioToolbox
 import CoreHaptics
@@ -230,6 +230,8 @@ class CameraManager: NSObject, ObservableObject {
     @Published var videoQuality: VideoQuality = .q4K
     /// 水平線インジケータ用のロール角度（度数）
     @Published var deviceRollDegrees: Double = 0
+    /// 画面が地面に対しておよそ垂直か（Apple 標準カメラ同様、垂直に近い時だけ水平インジケータを表示する）
+    @Published var isScreenRoughlyVertical: Bool = true
     /// 無音モード（true：シャッター音を消す／false：シャッター音を鳴らす）。設定は永続化。
     @Published var isSilentMode: Bool = (UserDefaults.standard.object(forKey: "isSilentMode") as? Bool ?? true) {
         didSet { UserDefaults.standard.set(isSilentMode, forKey: "isSilentMode") }
@@ -259,11 +261,14 @@ class CameraManager: NSObject, ObservableObject {
     @available(iOS 18.0, *)
     nonisolated(unsafe) private var captureSlider: AVCaptureSlider? = nil
     nonisolated(unsafe) private var videoConnection: AVCaptureConnection?
-    nonisolated(unsafe) private let ciContext = CIContext(options: [
+    private let ciContext = CIContext(options: [
         .workingColorSpace: CGColorSpace(name: CGColorSpace.displayP3) as Any,
     ])
 
     func feedback(_ type: HapticManager.FeedbackType) {
+        // 設定で OFF にされている場合は再生しない（既定値は ON）
+        let enabled = UserDefaults.standard.object(forKey: "hapticFeedbackEnabled") as? Bool ?? true
+        guard enabled else { return }
         HapticManager.shared.play(type)
     }
 
@@ -355,29 +360,25 @@ class CameraManager: NSObject, ObservableObject {
     private func registerCaptureSessionObservers() {
         let center = NotificationCenter.default
         center.addObserver(
-            forName: .AVCaptureSessionWasInterrupted,
+            forName: AVCaptureSession.wasInterruptedNotification,
             object: session,
             queue: .main
-        ) { notification in
-            let reason = (notification.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int) ?? -1
-            print("[Session] interrupted reason=\(reason)")
+        ) { _ in
+            // 割り込み発生（ログは出さず、終了側のハンドラで復帰させる）
         }
         center.addObserver(
-            forName: .AVCaptureSessionInterruptionEnded,
+            forName: AVCaptureSession.interruptionEndedNotification,
             object: session,
             queue: .main
         ) { [weak self] _ in
-            print("[Session] interruption ended")
-            self?.restartCaptureSessionIfNeeded()
+            Task { @MainActor [weak self] in self?.restartCaptureSessionIfNeeded() }
         }
         center.addObserver(
-            forName: .AVCaptureSessionRuntimeError,
+            forName: AVCaptureSession.runtimeErrorNotification,
             object: session,
             queue: .main
-        ) { [weak self] notification in
-            let err = notification.userInfo?[AVCaptureSessionErrorKey] as? Error
-            print("[Session] runtime error: \(err?.localizedDescription ?? "unknown")")
-            self?.restartCaptureSessionIfNeeded()
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.restartCaptureSessionIfNeeded() }
         }
         // バックグラウンド復帰時：他アプリ（写真など）から戻ったときに preview を確実に復帰させる
         center.addObserver(
@@ -385,8 +386,7 @@ class CameraManager: NSObject, ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            print("[Session] app did become active → restart capture session if needed")
-            self?.restartCaptureSessionIfNeeded()
+            Task { @MainActor [weak self] in self?.restartCaptureSessionIfNeeded() }
         }
     }
 
@@ -453,18 +453,8 @@ class CameraManager: NSObject, ObservableObject {
         // フル解像度を得るには fileDataRepresentation() の HEIC バイト列をデコードする。
         guard let fileData = photo.fileDataRepresentation(),
               let source = CGImageSourceCreateWithData(fileData as CFData, nil) else { return }
-        // HEIC 内部の構造を診断
-        let count = CGImageSourceGetCount(source)
         let primary = CGImageSourceGetPrimaryImageIndex(source)
-        print("[Capture] HEIC images count=\(count) primaryIdx=\(primary) fileData=\(fileData.count) bytes")
-        for i in 0..<count {
-            if let img = CGImageSourceCreateImageAtIndex(source, i, nil) {
-                print("[Capture]   image[\(i)]: \(img.width)x\(img.height)")
-            }
-        }
-        // primary 画像（フル解像度想定）を採用
         guard let cgImage = CGImageSourceCreateImageAtIndex(source, primary, nil) else { return }
-        print("[Capture] received cgImage \(cgImage.width)x\(cgImage.height)")
         let orientationRaw = (photo.metadata[kCGImagePropertyOrientation as String] as? UInt32) ?? 1
         let cgOrientation = CGImagePropertyOrientation(rawValue: orientationRaw) ?? .up
         var ci = CIImage(cgImage: cgImage).oriented(cgOrientation)
@@ -541,7 +531,7 @@ class CameraManager: NSObject, ObservableObject {
         // TIFF：orientation を 1 に、Software をアプリ名に
         var tiff = (props[kCGImagePropertyTIFFDictionary as String] as? [String: Any]) ?? [:]
         tiff[kCGImagePropertyTIFFOrientation as String] = 1
-        tiff[kCGImagePropertyTIFFSoftware as String] = "Silent Camera"
+        tiff[kCGImagePropertyTIFFSoftware as String] = "MokuSha"
         props[kCGImagePropertyTIFFDictionary as String] = tiff
 
         // GPS：位置情報があれば付与
@@ -611,7 +601,7 @@ class CameraManager: NSObject, ObservableObject {
         model.dataType = kCMMetadataBaseDataType_UTF8 as String
         let software = AVMutableMetadataItem()
         software.identifier = .quickTimeMetadataSoftware
-        software.value = "Silent Camera" as NSString
+        software.value = "MokuSha" as NSString
         software.dataType = kCMMetadataBaseDataType_UTF8 as String
         // レンズ名（例：Back Triple Camera）
         let lens = AVMutableMetadataItem()
@@ -795,6 +785,18 @@ class CameraManager: NSObject, ObservableObject {
             // ロール角度（縦持ち基準で水平方向の傾き、度数）
             let roll = atan2(acc.x, -acc.y) * 180 / .pi
             self.deviceRollDegrees = roll
+
+            // 画面の鉛直度合：Z 成分が大きいほど画面が地面と平行に近い（face-up / face-down）。
+            // ヒステリシスを設けて、表示が頻繁にちらつかないようにする。
+            //   - 表示中：|Z| が 0.55 を超えたら非表示（≈ 33° 傾いたら隠す）
+            //   - 非表示中：|Z| が 0.45 未満になったら表示（≈ 27° 以内になったら出す）
+            let absZ = abs(acc.z)
+            if self.isScreenRoughlyVertical {
+                if absZ > 0.55 { self.isScreenRoughlyVertical = false }
+            } else {
+                if absZ < 0.45 { self.isScreenRoughlyVertical = true }
+            }
+
             // UI 回転判定（既存ロジック、閾値を超えた時だけ更新）
             let threshold = 0.5
             if abs(acc.x) > abs(acc.y) && abs(acc.x) > threshold {
@@ -953,7 +955,7 @@ class CameraManager: NSObject, ObservableObject {
         try? audio.setCategory(
             .playAndRecord,
             mode: .videoRecording,
-            options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
+            options: [.defaultToSpeaker, .allowBluetoothHFP, .mixWithOthers]
         )
         // 録画中もハプティック／システム音を鳴らす許可（これが無いと .playAndRecord 中は全ハプティックが抑制される）
         try? audio.setAllowHapticsAndSystemSoundsDuringRecording(true)

@@ -1,11 +1,12 @@
 import AppIntents
+import Foundation
 
 extension Notification.Name {
-    static let cameraControlDidActivate = Notification.Name("cameraControlDidActivate")
+    nonisolated static let cameraControlDidActivate = Notification.Name("cameraControlDidActivate")
 }
 
 struct CaptureIntent: CameraCaptureIntent {
-    static let title: LocalizedStringResource = "Silent Camera"
+    static let title: LocalizedStringResource = "MokuSha"
     static var isDiscoverable: Bool = false
 
     func perform() async throws -> some IntentResult {

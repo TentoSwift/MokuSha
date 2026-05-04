@@ -31,7 +31,7 @@ struct TipJarView: View {
                         Text("開発者を応援")
                             .font(.system(size: 28, weight: .bold))
 
-                        Text("Silent Camera は今後も無料で公開を続けるつもりです。\nチップによる支援は完全に任意で、機能は変わりません。")
+                        Text("チップによる支援は完全に任意で、機能は変わりません。")
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)

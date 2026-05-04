@@ -28,8 +28,9 @@ struct ContentView: View {
     @State private var cameraFlipDegrees: Double = 0
     @State private var cameraControlLongPressTask: Task<Void, Never>? = nil
     @State private var cameraControlIsLongPress = false
-    @State private var showTipJar = false
+    @State private var showSettings = false
     @AppStorage("showCompositionGuides") private var showCompositionGuides = false
+    @AppStorage("showHorizonLevel") private var showHorizonLevel = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let slideThreshold: CGFloat = 60
@@ -83,6 +84,9 @@ struct ContentView: View {
         .onChange(of: camera.wideAngleZoomFactor) { lastZoom = camera.wideAngleZoomFactor }
         .onDisappear { camera.stopSession() }
         .onReceive(NotificationCenter.default.publisher(for: .cameraControlDidActivate)) { _ in
+            // ロック画面／ホーム長押し等からカメラコントロールが起動された場合：
+            // 設定シートが開いていたら閉じてカメラに戻る
+            if showSettings { showSettings = false }
             camera.startSession()
         }
 .sheet(isPresented: $showMetadata) {
@@ -90,8 +94,8 @@ struct ContentView: View {
                 MetadataView(metadata: metadata)
             }
         }
-        .sheet(isPresented: $showTipJar) {
-            TipJarView()
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
     }
 
@@ -107,6 +111,8 @@ struct ContentView: View {
                     .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
             }
             .topBarButton(isRecording: camera.isRecording)
+            .accessibilityLabel("カメラ切替")
+            .accessibilityHint(camera.isFrontCamera ? "現在は前面カメラ。タップで背面に切替" : "現在は背面カメラ。タップで前面に切替")
 
             if camera.isRecording {
                 HStack(spacing: 6) {
@@ -125,6 +131,10 @@ struct ContentView: View {
                 .padding(.horizontal, 14).padding(.vertical, 6)
                 .glassEffect(in: .capsule)
                 .transition(.opacity)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(isRecordingLocked
+                    ? "録画中、ロック済み、\(formatDuration(camera.recordingDuration))"
+                    : "録画中、\(formatDuration(camera.recordingDuration))")
             }
 
             Button {
@@ -133,6 +143,7 @@ struct ContentView: View {
                 HStack(spacing: 4) {
                     Image(systemName: camera.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill")
                         .font(.system(size: 11, weight: .semibold))
+                        .contentTransition(.symbolEffect(.replace))
                     Text(camera.isSilentMode ? "無音" : "音あり")
                         .font(.system(size: 11, weight: .semibold))
                 }
@@ -141,6 +152,8 @@ struct ContentView: View {
                 .glassEffect(in: .capsule)
             }
             .animation(.easeInOut(duration: 0.2), value: camera.isSilentMode)
+            .accessibilityLabel(camera.isSilentMode ? "無音モード、シャッター音は鳴りません" : "音ありモード、シャッター音が鳴ります")
+            .accessibilityHint("タップで切替")
 
             Spacer()
 
@@ -152,6 +165,8 @@ struct ContentView: View {
                     .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
             }
             .topBarButton(isRecording: camera.isRecording)
+            .accessibilityLabel("動画画質、\(camera.videoQuality.rawValue)")
+            .accessibilityHint("タップで切替")
 
             Button {
                 camera.captureAspectRatio = camera.captureAspectRatio.next
@@ -161,26 +176,20 @@ struct ContentView: View {
                     .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
             }
             .topBarButton(isRecording: camera.isRecording)
+            .accessibilityLabel("アスペクト比、\(camera.captureAspectRatio.rawValue)")
+            .accessibilityHint("タップで切替")
 
             Button {
-                showCompositionGuides.toggle()
+                showSettings = true
             } label: {
-                Image(systemName: showCompositionGuides ? "rectangle.split.3x3.fill" : "rectangle.split.3x3")
+                Image(systemName: "gear")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(showCompositionGuides ? .yellow : .white)
+                    .foregroundStyle(.white)
                     .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
             }
             .topBarButton(isRecording: camera.isRecording)
-
-            Button {
-                showTipJar = true
-            } label: {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.pink)
-                    .topBarIcon(rotation: rotAngle, uiRotation: camera.uiRotationDegrees)
-            }
-            .topBarButton(isRecording: camera.isRecording)
+            .accessibilityLabel("設定")
+            .accessibilityHint("構図ガイド、触覚フィードバック、チップなどの設定")
         }
         .animation(anim(.easeInOut(duration: 0.2)), value: camera.isRecording)
     }
@@ -201,16 +210,24 @@ struct ContentView: View {
                     showFocusAt(location)
                 }
             } else if camera.authorizationStatus == .denied {
-                VStack(spacing: 16) {
+                VStack(spacing: 20) {
                     Image(systemName: "camera.slash")
                         .font(.system(size: 60))
                         .foregroundStyle(.white)
                     Text("カメラへのアクセスが許可されていません")
                         .foregroundStyle(.white)
-                    Text("設定 > Silent Camera でカメラを許可してください")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Label("システム設定を開く", systemImage: "gear")
+                            .font(.headline)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.glassProminent)
                 }
                 .padding()
             }
@@ -218,8 +235,20 @@ struct ContentView: View {
             if showCompositionGuides {
                 GridLinesOverlay()
                     .allowsHitTesting(false)
-                LevelIndicator(rollDegrees: camera.deviceRollDegrees)
-                    .allowsHitTesting(false)
+            }
+
+            if showHorizonLevel {
+                Group {
+                    if camera.isScreenRoughlyVertical {
+                        LevelIndicator(
+                            rollDegrees: camera.deviceRollDegrees,
+                            uiRotationDegrees: camera.uiRotationDegrees
+                        )
+                        .allowsHitTesting(false)
+                    }
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: camera.isScreenRoughlyVertical)
             }
 
             if showFocusIndicator, let pt = focusPoint {
@@ -428,6 +457,14 @@ struct ContentView: View {
                     }
                     .contentShape(Circle())
                     .allowsHitTesting(camera.authorizationStatus == .authorized)
+                    .accessibilityElement()
+                    .accessibilityLabel(camera.isRecording
+                        ? (isRecordingLocked ? "録画停止" : "録画停止または右にスライドしてロック")
+                        : "シャッター")
+                    .accessibilityHint(camera.isRecording
+                        ? "タップで録画停止"
+                        : "タップで写真撮影、長押しで動画録画開始")
+                    .accessibilityAddTraits(.isButton)
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { val in
@@ -529,10 +566,14 @@ struct ContentView: View {
                         .frame(width: 56, height: 56)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
+                        .accessibilityLabel("最後に撮った写真")
+                        .accessibilityHint("タップで写真ライブラリを開く")
                 } else {
                     Circle()
                         .stroke(.white.opacity(0.3), lineWidth: 1)
                         .frame(width: 56, height: 56)
+                        .accessibilityLabel("写真ライブラリ")
+                        .accessibilityHint("タップで写真ライブラリを開く")
                 }
             }
             .rotationEffect(.degrees(camera.uiRotationDegrees))
@@ -618,6 +659,17 @@ struct ContentView: View {
     /// カメラコントロール（iPhone 16 のハードウェアボタン）の押下フェーズを
     /// 画面シャッターと同じ「短押し→写真／長押し→録画→離す→停止」に対応付ける
     private func handleCameraControl(phase: AVCaptureEventPhase) {
+        // 設定シートが開いている時は、シートを閉じてカメラ画面に戻る挙動だけ行う
+        // （写真撮影や録画は発火させない）
+        if showSettings {
+            if phase == .began {
+                showSettings = false
+            }
+            cameraControlIsLongPress = false
+            cameraControlLongPressTask?.cancel()
+            cameraControlLongPressTask = nil
+            return
+        }
         switch phase {
         case .began:
             // すでに録画中なら長押しタイマーは動かさない（.ended で停止判定する）

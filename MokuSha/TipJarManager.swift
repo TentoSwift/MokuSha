@@ -4,9 +4,9 @@
 //
 //  StoreKit 2 を使った開発者チップ（消費型 IAP）
 //  App Store Connect で以下の Product ID を消費型で登録：
-//    - com.tento.SilentCamera.tip.small  (例: ¥120)
-//    - com.tento.SilentCamera.tip.medium (例: ¥480)
-//    - com.tento.SilentCamera.tip.large  (例: ¥1,200)
+//    - com.tento.MokuSha.tip.small  (例: ¥120)
+//    - com.tento.MokuSha.tip.medium (例: ¥480)
+//    - com.tento.MokuSha.tip.large  (例: ¥1,200)
 //
 
 import Foundation
@@ -27,9 +27,9 @@ final class TipJarManager: ObservableObject {
     }
 
     static let productIDs: [String] = [
-        "com.tento.SilentCamera.tip.small",
-        "com.tento.SilentCamera.tip.medium",
-        "com.tento.SilentCamera.tip.large",
+        "com.tento.MokuSha.tip.small",
+        "com.tento.MokuSha.tip.medium",
+        "com.tento.MokuSha.tip.large",
     ]
 
     func loadProducts() async {

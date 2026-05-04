@@ -144,7 +144,6 @@ private struct TipButton: View {
     private func emoji(for productID: String) -> String {
         if productID.contains("small")  { return "cup.and.saucer.fill" }
         if productID.contains("medium") { return "fork.knife" }
-        if productID.contains("large")  { return "gift.fill" }
         return "heart.fill"
     }
 }

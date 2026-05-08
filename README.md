@@ -49,5 +49,3 @@ MokuSha/
 ## ライセンス
 
 © 2026 Tento Ishino. All rights reserved.
-
-このソースコードは閲覧・参照目的でのみ公開されています。利用・複製・改変・再配布は許可されていません。詳細は [LICENSE](LICENSE) を参照してください。

@@ -1,0 +1,48 @@
+# MokuSha
+
+シャッター音の「あり」「なし」をワンタップで切り替えできる、シンプルな iPhone 用カメラアプリです。
+
+[App Store からダウンロード](https://apps.apple.com/jp/app/mokusha/id6766134966)
+
+## 特徴
+
+- **シャッター音の切り替え**：シーンに合わせて音のあり／なしをワンタップで変更
+- **キャプチャ拡張**：ロック画面のカメラコントロールやアクションボタンから即起動
+- **写真ライブラリ**：撮影した写真をアプリ内で確認
+- **メタデータ表示**：撮影情報を確認可能
+- **オンボーディング**：初回起動時のガイド
+- **アシスティブアクセス対応**：簡単操作モードでも利用可能
+- **チップ（投げ銭）機能**：開発支援用の課金
+
+## 使い方
+
+寝ている赤ちゃんを起こしたくない時、警戒心の強いペットを驚かせたくない時、図書館や美術館など静かな場所で撮影したい時に最適です。
+
+## 動作環境
+
+- iOS（iPhone）
+
+## プロジェクト構成
+
+```
+MokuSha/
+├── MokuSha/                       # メインアプリ
+│   ├── MokuShaApp.swift           # エントリーポイント
+│   ├── ContentView.swift          # メイン画面
+│   ├── CameraManager.swift        # カメラ制御
+│   ├── CameraPreviewView.swift    # プレビュー
+│   ├── CaptureIntent.swift        # アクションボタン Intent
+│   ├── PhotoLibraryView.swift     # 写真ライブラリ
+│   ├── SettingsView.swift         # 設定
+│   ├── OnboardingView.swift       # オンボーディング
+│   ├── TipJarManager.swift        # チップ機能
+│   └── AssistiveAccessContentView.swift
+├── MokuSha Capture Extension/     # カメラコントロール拡張
+└── MokuSha.xcodeproj
+```
+
+## ライセンス
+
+© 2026 Tento Ishino. All rights reserved.
+
+このソースコードは閲覧・参照目的でのみ公開されています。利用・複製・改変・再配布は許可されていません。詳細は [LICENSE](LICENSE) を参照してください。
